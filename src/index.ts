@@ -1,4 +1,4 @@
-import { init } from "./main";
+import { init, createOnOpen, askExecute, getKeywordData } from "./main";
 
 /**
  * @file GASエディタから実行できる関数を定義する
@@ -7,3 +7,6 @@ import { init } from "./main";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 declare const global: any;
 global.init = init;
+global.createOnOpen = createOnOpen;
+global.askExecute = askExecute;
+global.getKeywordData = getKeywordData;
