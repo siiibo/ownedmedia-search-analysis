@@ -6,7 +6,8 @@ class KeywordUrl {
 
 export const init = () => {
     const dataSpreadSheet = getDataSpreadSheet();
-    ScriptApp.newTrigger(onOpen.name).forSpreadsheet(dataSpreadSheet).onOpen().create();
+    // トリガーの追加
+    ScriptApp.newTrigger(createOnOpen.name).forSpreadsheet(dataSpreadSheet).onOpen().create();
 };
 
 const getDataSpreadSheet = (): GoogleAppsScript.Spreadsheet.Spreadsheet => {
@@ -14,18 +15,19 @@ const getDataSpreadSheet = (): GoogleAppsScript.Spreadsheet.Spreadsheet => {
     if (!spreadSheetUrl) throw new Error("SPREAD_SHEET_URL is not defined");
     return SpreadsheetApp.openByUrl(spreadSheetUrl);
 };
-const onOpen = () => {
-    SpreadsheetApp.getUi().createAddonMenu().addItem("検索の実行2", askExecute.name).addToUi();
+
+export const createOnOpen = () => {
+    SpreadsheetApp.getUi().createAddonMenu().addItem("検索の実行", askExecute.name).addToUi();
 };
 
-const askExecute = () => {
+export const askExecute = () => {
     const question = Browser.msgBox("検索を実行しますか?", Browser.Buttons.YES_NO);
     if (question == "yes") {
         getKeywordData();
     }
 };
 
-const getKeywordData = () => {
+export const getKeywordData = () => {
     //スプレッドシートから期間の取得
     const dataSpreadSheet = getDataSpreadSheet();
     const periodSheet = dataSpreadSheet.getSheetByName("期間指定");
@@ -61,6 +63,7 @@ const getSearchData = (dataSpreadSheet: GoogleAppsScript.Spreadsheet.Spreadsheet
     // KWの取得，KW URLリストの作成
     const keywordUrlSheet = dataSpreadSheet.getSheetByName("対キーワードURL週次検索結果");
     if (!keywordUrlSheet) throw new Error("SHEET is not defined");
+
     const keywordStartRow = 2;
     const keywordEndColumn = 1;
     const keywordColumnSize = 2;
@@ -83,9 +86,13 @@ const getSearchData = (dataSpreadSheet: GoogleAppsScript.Spreadsheet.Spreadsheet
     // dimensionの値によるグループ化
     //リクエスト送る時のペイロード指定(=出力条件)
     for (const keyword of Object.keys(keywordUrl)) {
+        const keyword1 = keyword.replace(" ", "( |　)");
+        const keyword2 = keyword1.replace("　", "( |　)");
+        const keyword3 = "^" + keyword2 + "$";
+        console.log(keyword);
         const payload = {
-            startDate: format(startDate, "YYYY-MM-DD"),
-            endDate: format(endDate, "YYYY-MM-DD"),
+            startDate: format(startDate, "yyyy-MM-dd"),
+            endDate: format(endDate, "yyyy-MM-dd"),
             dimensions: ["query", "page"], // このフィルターが適用されるディメンション。
             rowLimit: maxRecord, //取得するキーワードの最大数
             dimensionFilterGroups: [
@@ -93,14 +100,13 @@ const getSearchData = (dataSpreadSheet: GoogleAppsScript.Spreadsheet.Spreadsheet
                     filters: [
                         {
                             dimension: "query", //指定されたクエリ文字列に対してフィルター処理します。
-                            operator: "equals", //指定した値が行のディメンション値とどのように一致する (または一致しない) 必要があるか
-                            expression: keyword, //演算子に応じて、一致または除外するフィルターの値。
+                            operator: "includingRegex", //指定した値が行のディメンション値とどのように一致する (または一致しない) 必要があるか
+                            expression: keyword3, //演算子に応じて、一致または除外するフィルターの値。
                         },
                     ],
                 },
             ],
         };
-
         //ヘッダーのオプション
         const options = {
             payload: JSON.stringify(payload),
@@ -189,9 +195,9 @@ const getSearchData = (dataSpreadSheet: GoogleAppsScript.Spreadsheet.Spreadsheet
         }
     }
     keywordResultSheet.setName(
-        format(startDate, "YYYY-MM-DD") + "~" + format(endDate, "MM-DD") + "-" + "対キーワード週次検索結果"
+        format(startDate, "yyyy-MM-dd") + "~" + format(endDate, "MM-dd") + "-" + "対キーワード週次検索結果"
     );
     keywordUrlReusltSheet.setName(
-        format(startDate, "YYYY-MM-DD") + "~" + format(endDate, "MM-DD") + "-" + "対キーワードURL週次検索結果"
+        format(startDate, "yyyy-MM-dd") + "~" + format(endDate, "MM-dd") + "-" + "対キーワードURL週次検索結果"
     );
 };
