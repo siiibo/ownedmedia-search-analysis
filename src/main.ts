@@ -1,16 +1,17 @@
 import { endOfDay, format } from "date-fns";
 
-class KeywordUrl {
+type KeywordUrl = {
     [key: string]: string[];
-}
-
-export const init = () => {
-    const dataSpreadSheet = getDataSpreadSheet();
-    // トリガーの追加
-    ScriptApp.newTrigger(createOnOpen.name).forSpreadsheet(dataSpreadSheet).onOpen().create();
 };
 
-const getDataSpreadSheet = (): GoogleAppsScript.Spreadsheet.Spreadsheet => {
+// 検索を実行するまで: 対象スプシの指定→対象スプシをOpenしたらUI上にアドオンメニューを追加する→操作者がUIを操作して検索実行
+export const init = () => {
+    const spreadSheet = getSpreadSheet();
+    // トリガーの追加
+    ScriptApp.newTrigger(createOnOpen.name).forSpreadsheet(spreadSheet).onOpen().create();
+};
+
+const getSpreadSheet = (): GoogleAppsScript.Spreadsheet.Spreadsheet => {
     const spreadSheetUrl = PropertiesService.getScriptProperties().getProperty("SPREAD_SHEET_URL");
     if (!spreadSheetUrl) throw new Error("SPREAD_SHEET_URL is not defined");
     return SpreadsheetApp.openByUrl(spreadSheetUrl);
@@ -23,33 +24,72 @@ export const createOnOpen = () => {
 export const askExecute = () => {
     const question = Browser.msgBox("検索を実行しますか?", Browser.Buttons.YES_NO);
     if (question == "yes") {
-        getKeywordData();
+        main();
     }
 };
 
-export const getKeywordData = () => {
+export const main = () => {
     //スプレッドシートから期間の取得
-    const dataSpreadSheet = getDataSpreadSheet();
-    const periodSheet = dataSpreadSheet.getSheetByName("期間指定");
-    if (!periodSheet) throw new Error("SHEET is not defined");
+    const spreadSheet = getSpreadSheet();
+    const startEndDate = getStartEndDate(spreadSheet);
+    const startDate = startEndDate.start;
+    const endDate = startEndDate.end;
+    getSearchConsoleReusults(spreadSheet, startDate, endDate);
+};
+const getStartEndDate = (spreadSheet: GoogleAppsScript.Spreadsheet.Spreadsheet) => {
+    const periodSheet = spreadSheet.getSheetByName("期間指定");
+    if (!periodSheet) throw new Error("periodSheet is not defined");
     const startDate = periodSheet.getRange("B4").getValue();
     const endDate = endOfDay(periodSheet.getRange("C4").getValue());
-    getSearchData(dataSpreadSheet, startDate, endDate);
+    return { start: startDate, end: endDate };
 };
 
-const getSearchData = (dataSpreadSheet: GoogleAppsScript.Spreadsheet.Spreadsheet, startDate: Date, endDate: Date) => {
+const setHeader = (
+    keywordResultSheet: GoogleAppsScript.Spreadsheet.Sheet,
+    keywordUrlReusltSheet: GoogleAppsScript.Spreadsheet.Sheet
+) => {
+    const header = [["キーワード", "記事URL", "クリック数", "インプレッション", "平均順位", "平均CTR"]];
+    keywordResultSheet.getRange(1, 1, 1, 1).setValues([["意図していない表示URL"]]);
+    keywordResultSheet.getRange(2, 1, 1, header[0].length).setValues(header);
+    keywordResultSheet.getRange(1, 1 + header[0].length + 1, 1, 1).setValues([["枝付きURL"]]);
+    keywordResultSheet.getRange(2, 1 + header[0].length + 1, 1, header[0].length).setValues(header);
+    keywordUrlReusltSheet.getRange(1, 1, 1, header[0].length).setValues(header);
+};
+
+const getKeywordUrlClass = (spreadSheet: GoogleAppsScript.Spreadsheet.Spreadsheet) => {
+    // KWの取得，KW URLリストの作成
+    const keywordUrlSheet = spreadSheet.getSheetByName("対キーワードURL週次検索結果");
+    if (!keywordUrlSheet) throw new Error("SHEET is not defined");
+    const keywordUrlData = keywordUrlSheet.getDataRange().getValues();
+    const [headers, ...records] = keywordUrlData;
+
+    const keywordUrl: KeywordUrl = {};
+
+    for (const record of records) {
+        const keyword: string = record[0];
+        keywordUrl[keyword] = [];
+    }
+
+    for (const record of records) {
+        const keyword: string = record[0];
+        const url: string = record[1];
+        keywordUrl[keyword].push(url);
+    }
+    console.log(keywordUrl);
+    return keywordUrl;
+};
+
+const getSearchConsoleReusults = (
+    spreadSheet: GoogleAppsScript.Spreadsheet.Spreadsheet,
+    startDate: Date,
+    endDate: Date
+) => {
     // 結果記入用シートの追加
-    const keywordResultSheet = dataSpreadSheet.insertSheet(dataSpreadSheet.getNumSheets());
-    const keywordUrlReusltSheet = dataSpreadSheet.insertSheet(dataSpreadSheet.getNumSheets());
+    const keywordResultSheet = spreadSheet.insertSheet(3);
+    const keywordUrlReusltSheet = spreadSheet.insertSheet(4);
 
     // タイトルの設定
-    const title = [["キーワード", "記事URL", "クリック数", "インプレッション", "平均順位", "平均CTR"]];
-    console.log("title", title[0].length);
-    keywordResultSheet.getRange(1, 1, 1, 1).setValues([["意図していない表示URL"]]);
-    keywordResultSheet.getRange(2, 1, 1, title[0].length).setValues(title);
-    keywordResultSheet.getRange(1, 1 + title[0].length + 1, 1, 1).setValues([["枝付きURL"]]);
-    keywordResultSheet.getRange(2, 1 + title[0].length + 1, 1, title[0].length).setValues(title);
-    keywordUrlReusltSheet.getRange(1, 1, 1, title[0].length).setValues(title);
+    setHeader(keywordResultSheet, keywordUrlReusltSheet);
 
     //サーチコンソールに登録しているサイトドメイン
     const siteDomain = "siiibo.com";
@@ -60,36 +100,13 @@ const getSearchData = (dataSpreadSheet: GoogleAppsScript.Spreadsheet.Spreadsheet
     //サーチコンソールから取得するキーワードの最大数を設定する
     const maxRecord = 1000;
 
-    // KWの取得，KW URLリストの作成
-    const keywordUrlSheet = dataSpreadSheet.getSheetByName("対キーワードURL週次検索結果");
-    if (!keywordUrlSheet) throw new Error("SHEET is not defined");
+    const keywordUrl = getKeywordUrlClass(spreadSheet);
 
-    const keywordStartRow = 2;
-    const keywordEndColumn = 1;
-    const keywordColumnSize = 2;
-    const rowEndData = keywordUrlSheet.getDataRange().getLastRow();
-    const keywordRowSize = rowEndData - (keywordStartRow - 1);
-    const keywordUrlData = keywordUrlSheet
-        .getRange(keywordStartRow, keywordEndColumn, keywordRowSize, keywordColumnSize)
-        .getValues();
-
-    const keywordUrl = new KeywordUrl();
-
-    for (let i = 0; i < keywordUrlData.length; i++) {
-        const keyword: string = keywordUrlData[i][0];
-        const url: string = keywordUrlData[i][1];
-        keywordUrl[keyword] = [];
-        keywordUrl[keyword].push(url);
-    }
-
-    // それぞれのKWについて結果を取得 → URLの条件で考える
-    // dimensionの値によるグループ化
-    //リクエスト送る時のペイロード指定(=出力条件)
     for (const keyword of Object.keys(keywordUrl)) {
-        const keyword1 = keyword.replace(" ", "( |　)");
-        const keyword2 = keyword1.replace("　", "( |　)");
-        const keyword3 = "^" + keyword2 + "$";
-        console.log(keyword);
+        // KWを半角全角許容する
+        const keyword_ = "^" + keyword.replace(" ", "( |　)").replace("　", "( |　)") + "$";
+
+        // ペイロードの設定 キーワードひとつずつにしか送れない?
         const payload = {
             startDate: format(startDate, "yyyy-MM-dd"),
             endDate: format(endDate, "yyyy-MM-dd"),
@@ -101,13 +118,14 @@ const getSearchData = (dataSpreadSheet: GoogleAppsScript.Spreadsheet.Spreadsheet
                         {
                             dimension: "query", //指定されたクエリ文字列に対してフィルター処理します。
                             operator: "includingRegex", //指定した値が行のディメンション値とどのように一致する (または一致しない) 必要があるか
-                            expression: keyword3, //演算子に応じて、一致または除外するフィルターの値。
+                            expression: keyword_, //演算子に応じて、一致または除外するフィルターの値。
                         },
                     ],
                 },
             ],
         };
-        //ヘッダーのオプション
+
+        //ヘッダーのオプション指定
         const options = {
             payload: JSON.stringify(payload),
             myamethod: "POST",
@@ -116,15 +134,15 @@ const getSearchData = (dataSpreadSheet: GoogleAppsScript.Spreadsheet.Spreadsheet
             contentType: "application/json",
         };
 
-        //APIリクエス送信とJSONの分解
+        //APIにリクエスト送信→レスポンスをもらう
         const response = UrlFetchApp.fetch(apiURL, options);
+        //レスポンスの内容をJSONファイルへ
         const json = JSON.parse(response.getContentText());
 
-        const urlMatched = [];
-        const urlNotMatched = [];
-        const urlBranched = [];
+        const urlMatched = []; //URLに一致
+        const urlNotMatched = []; //URLに不一致
+        const urlBranched = []; //分岐
 
-        // filterを使うように書きなおしたい
         if (!(typeof json["rows"] === "undefined" || json["rows"].length === 0)) {
             //分解したデータを配列化して、入れ物の配列にpushでぶちこんでいく
             for (let i = 0; i < json["rows"].length; i++) {
