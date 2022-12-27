@@ -31,6 +31,7 @@ export const askExecute = () => {
 export const main = () => {
     //スプレッドシートから期間の取得
     const spreadSheet = getSpreadSheet();
+
     const startEndDate = getStartEndDate(spreadSheet);
     const startDate = startEndDate.start;
     const endDate = startEndDate.end;
