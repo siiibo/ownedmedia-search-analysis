@@ -1,4 +1,4 @@
-import { init, createOnOpen, askExecute, getKeywordData } from "./main";
+import { init, createOnOpen, askExecute, main } from "./main";
 
 /**
  * @file GASエディタから実行できる関数を定義する
@@ -9,4 +9,4 @@ declare const global: any;
 global.init = init;
 global.createOnOpen = createOnOpen;
 global.askExecute = askExecute;
-global.getKeywordData = getKeywordData;
+global.main = main;
