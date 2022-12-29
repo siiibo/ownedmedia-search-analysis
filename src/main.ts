@@ -35,7 +35,7 @@ export const main = () => {
     const startEndDate = getStartEndDate(spreadSheet);
     const startDate = startEndDate.start;
     const endDate = startEndDate.end;
-    getSearchConsoleReusults(spreadSheet, startDate, endDate);
+    getSearchConsoleResults(spreadSheet, startDate, endDate);
 };
 const getStartEndDate = (spreadSheet: GoogleAppsScript.Spreadsheet.Spreadsheet) => {
     const periodSheet = spreadSheet.getSheetByName("期間指定");
@@ -84,7 +84,7 @@ const getDataFromSearchConsole = (
     keyword: string,
     startDate: Date,
     endDate: Date,
-    apiURL: string,
+    apiUrl: string,
     maxRecord: number
 ) => {
     // KWを半角全角許容する
@@ -119,7 +119,7 @@ const getDataFromSearchConsole = (
     };
 
     //APIにリクエスト送信→レスポンスをもらう
-    const response = UrlFetchApp.fetch(apiURL, options);
+    const response = UrlFetchApp.fetch(apiUrl, options);
     //レスポンスの内容をJSONファイルへ
     const responseData = JSON.parse(response.getContentText());
     return responseData;
@@ -209,7 +209,7 @@ const writeInSpreadSheet = (
     }
 };
 
-const getSearchConsoleReusults = (
+const getSearchConsoleResults = (
     spreadSheet: GoogleAppsScript.Spreadsheet.Spreadsheet,
     startDate: Date,
     endDate: Date
@@ -225,7 +225,7 @@ const getSearchConsoleReusults = (
     const siteDomain = "siiibo.com";
 
     //リクエストするAPIのURLを設定
-    const apiURL =
+    const apiUrl =
         "https://www.googleapis.com/webmasters/v3/sites/sc-domain%3A" + siteDomain + "/searchAnalytics/query";
     //サーチコンソールから取得するキーワードの最大数を設定する
     const maxRecord = 1000;
@@ -233,7 +233,7 @@ const getSearchConsoleReusults = (
     const keywordUrl = getKeywordUrlClass(spreadSheet);
 
     for (const keyword of Object.keys(keywordUrl)) {
-        const responseData = getDataFromSearchConsole(keyword, startDate, endDate, apiURL, maxRecord);
+        const responseData = getDataFromSearchConsole(keyword, startDate, endDate, apiUrl, maxRecord);
 
         if (!(typeof responseData["rows"] === "undefined" || responseData["rows"].length === 0)) {
             const results = formatData(responseData, keywordUrl, keyword);
