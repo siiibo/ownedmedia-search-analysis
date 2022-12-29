@@ -1,7 +1,9 @@
 import { endOfDay, format } from "date-fns";
+import { group } from "radash";
 
 type KeywordUrl = {
-    [key: string]: string[];
+    keyword: string;
+    url: string;
 };
 
 // 検索を実行するまで: 対象スプシの指定→対象スプシをOpenしたらUI上にアドオンメニューを追加する→操作者がUIを操作して検索実行
@@ -57,28 +59,18 @@ const setHeader = (
     keywordUrlReusltSheet.getRange(1, 1, 1, header[0].length).setValues(header);
 };
 
-const getKeywordUrlClass = (spreadSheet: GoogleAppsScript.Spreadsheet.Spreadsheet) => {
-    // KWの取得，KW URLリストの作成
-    const keywordUrlSheet = spreadSheet.getSheetByName("対キーワードURL週次検索結果");
-    if (!keywordUrlSheet) throw new Error("SHEET is not defined");
-    const keywordUrlData = keywordUrlSheet.getDataRange().getValues();
-    const [headers, ...records] = keywordUrlData;
-
-    const keywordUrl: KeywordUrl = {};
-
-    for (const record of records) {
-        const keyword: string = record[0];
-        keywordUrl[keyword] = [];
-    }
-
-    for (const record of records) {
-        const keyword: string = record[0];
-        const url: string = record[1];
-        keywordUrl[keyword].push(url);
-    }
-    console.log(keywordUrl);
-    return keywordUrl;
-};
+function getUrlsGroupedByKeyword(keywordUrlSheet: GoogleAppsScript.Spreadsheet.Sheet) {
+    // const sheetValues = keywordUrlSheet.getRange(2, 1, keywordUrlSheet.getLastRow()-1, 2).getValues();
+    const [sheetHeader, ...sheetValues] = keywordUrlSheet.getDataRange().getValues();
+    const keywordUrls: KeywordUrl[] = sheetValues.map((row) => {
+        return {
+            keyword: row[0],
+            url: row[1],
+        };
+    });
+    const urlGroupedByKeyword = group(keywordUrls, (keywordUrl) => keywordUrl.keyword);
+    return urlGroupedByKeyword;
+}
 
 const getDataFromSearchConsole = (
     keyword: string,
@@ -127,8 +119,7 @@ const getDataFromSearchConsole = (
 
 const formatData = (
     json: any,
-    keywordUrl: KeywordUrl,
-    keyword: string
+    urls: string[] | undefined
 ): { matched: any[][]; notMatched: any[][]; branched: any[][] } => {
     const urlMatched = []; //URLに一致
     const urlNotMatched = []; //URLに不一致
@@ -137,7 +128,7 @@ const formatData = (
     //分解したデータを配列化して、入れ物の配列にpushでぶちこんでいく
     for (let i = 0; i < json["rows"].length; i++) {
         // URLが対策URLと一致するなら
-        if (keywordUrl[keyword].includes(json["rows"][i]["keys"][1])) {
+        if (urls?.includes(json["rows"][i]["keys"][1])) {
             urlMatched.push([
                 json["rows"][i]["keys"][0],
                 json["rows"][i]["keys"][1],
@@ -230,18 +221,28 @@ const getSearchConsoleResults = (
     //サーチコンソールから取得するキーワードの最大数を設定する
     const maxRecord = 1000;
 
-    const keywordUrl = getKeywordUrlClass(spreadSheet);
+    const keywordUrlSheet = spreadSheet.getSheetByName("対キーワードURL週次検索結果");
+    if (!keywordUrlSheet) throw new Error("SHEET is not defined");
 
-    for (const keyword of Object.keys(keywordUrl)) {
+    const keywordUrl = getUrlsGroupedByKeyword(keywordUrlSheet);
+
+    // for (const keyword of Object.keys(keywordUrl)) {
+    for (const [keyword, values] of Object.entries(keywordUrl)) {
+        // 対策URLの抽出
+        const urls = values?.map((value) => {
+            return value.url;
+        });
         const responseData = getDataFromSearchConsole(keyword, startDate, endDate, apiUrl, maxRecord);
 
         if (!(typeof responseData["rows"] === "undefined" || responseData["rows"].length === 0)) {
-            const results = formatData(responseData, keywordUrl, keyword);
-            const urlMatched = results.matched;
-            const urlNotMatched = results.notMatched;
-            const urlBranched = results.branched;
+            if (keywordUrl[keyword] != undefined) {
+                const results = formatData(responseData, urls);
+                const urlMatched = results.matched;
+                const urlNotMatched = results.notMatched;
+                const urlBranched = results.branched;
 
-            writeInSpreadSheet(urlMatched, urlNotMatched, urlBranched, keywordUrlReusltSheet, keywordResultSheet);
+                writeInSpreadSheet(urlMatched, urlNotMatched, urlBranched, keywordUrlReusltSheet, keywordResultSheet);
+            }
         } else {
             console.log("該当するデータがありませんでした。");
         }
