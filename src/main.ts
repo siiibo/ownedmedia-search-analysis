@@ -80,6 +80,135 @@ const getKeywordUrlClass = (spreadSheet: GoogleAppsScript.Spreadsheet.Spreadshee
     return keywordUrl;
 };
 
+const getDataFromSearchConsole = (
+    keyword: string,
+    startDate: Date,
+    endDate: Date,
+    apiURL: string,
+    maxRecord: number
+) => {
+    // KWを半角全角許容する
+    const keyword_ = "^" + keyword.replace(" ", "( |　)").replace("　", "( |　)") + "$";
+
+    // ペイロードの設定 キーワードひとつずつにしか送れない?
+    const payload = {
+        startDate: format(startDate, "yyyy-MM-dd"),
+        endDate: format(endDate, "yyyy-MM-dd"),
+        dimensions: ["query", "page"], // このフィルターが適用されるディメンション。
+        rowLimit: maxRecord, //取得するキーワードの最大数
+        dimensionFilterGroups: [
+            {
+                filters: [
+                    {
+                        dimension: "query", //指定されたクエリ文字列に対してフィルター処理します。
+                        operator: "includingRegex", //指定した値が行のディメンション値とどのように一致する (または一致しない) 必要があるか
+                        expression: keyword_, //演算子に応じて、一致または除外するフィルターの値。
+                    },
+                ],
+            },
+        ],
+    };
+
+    //ヘッダーのオプション指定
+    const options = {
+        payload: JSON.stringify(payload),
+        myamethod: "POST",
+        muteHttpExceptions: true,
+        headers: { Authorization: "Bearer " + ScriptApp.getOAuthToken() },
+        contentType: "application/json",
+    };
+
+    //APIにリクエスト送信→レスポンスをもらう
+    const response = UrlFetchApp.fetch(apiURL, options);
+    //レスポンスの内容をJSONファイルへ
+    const responseData = JSON.parse(response.getContentText());
+    return responseData;
+};
+
+const formatData = (
+    json: any,
+    keywordUrl: KeywordUrl,
+    keyword: string
+): { matched: any[][]; notMatched: any[][]; branched: any[][] } => {
+    const urlMatched = []; //URLに一致
+    const urlNotMatched = []; //URLに不一致
+    const urlBranched = []; //分岐
+
+    //分解したデータを配列化して、入れ物の配列にpushでぶちこんでいく
+    for (let i = 0; i < json["rows"].length; i++) {
+        // URLが対策URLと一致するなら
+        if (keywordUrl[keyword].includes(json["rows"][i]["keys"][1])) {
+            urlMatched.push([
+                json["rows"][i]["keys"][0],
+                json["rows"][i]["keys"][1],
+                json["rows"][i]["clicks"],
+                json["rows"][i]["impressions"],
+                json["rows"][i]["position"],
+                json["rows"][i]["ctr"],
+            ]);
+        }
+        // 対策URLと一致しないかつ枝付きじゃないかつクリック数が1以上
+        else if (!json["rows"][i]["keys"][1].match("#") && json["rows"][i]["clicks"] >= 1) {
+            urlNotMatched.push([
+                json["rows"][i]["keys"][0],
+                json["rows"][i]["keys"][1],
+                json["rows"][i]["clicks"],
+                json["rows"][i]["impressions"],
+                json["rows"][i]["position"],
+                json["rows"][i]["ctr"],
+            ]);
+        }
+        // URLが枝付きかつクリックが1以上なら
+        else if (json["rows"][i]["clicks"] >= 1) {
+            urlBranched.push([
+                json["rows"][i]["keys"][0],
+                json["rows"][i]["keys"][1],
+                json["rows"][i]["clicks"],
+                json["rows"][i]["impressions"],
+                json["rows"][i]["position"],
+                json["rows"][i]["ctr"],
+            ]);
+        }
+    }
+    return { matched: urlMatched, notMatched: urlNotMatched, branched: urlBranched };
+};
+
+const writeInSpreadSheet = (
+    urlMatched: any[][],
+    urlNotMatched: any[][],
+    urlBranched: any[][],
+    keywordUrlReusltSheet: GoogleAppsScript.Spreadsheet.Sheet,
+    keywordResultSheet: GoogleAppsScript.Spreadsheet.Sheet
+) => {
+    if (urlMatched.length >= 1) {
+        const urlMatchedColumnBVals = keywordUrlReusltSheet.getRange("A:A").getValues();
+        const urlMatchedLastRow = urlMatchedColumnBVals.filter(String).length;
+        keywordUrlReusltSheet
+            .getRange(urlMatchedLastRow + 1, 1, urlMatched.length, urlMatched[0].length)
+            .setValues(urlMatched);
+        keywordUrlReusltSheet.getRange(urlMatchedLastRow + 1, 6, urlMatched.length).setNumberFormat("0.00%"); //CTRの表示形式変更
+    }
+    console.log(urlNotMatched);
+    if (urlNotMatched.length >= 1) {
+        const urlNotMatchedColumnBVals = keywordResultSheet.getRange("A:A").getValues();
+        const urlNotMatchedLastRow = urlNotMatchedColumnBVals.filter(String).length;
+        keywordResultSheet
+            .getRange(urlNotMatchedLastRow + 1, 1, urlNotMatched.length, urlNotMatched[0].length)
+            .setValues(urlNotMatched);
+        keywordResultSheet.getRange(urlNotMatchedLastRow + 1, 6, urlNotMatched.length).setNumberFormat("0.00%"); //CTRの表示形式変更
+    }
+
+    if (urlBranched.length >= 1) {
+        console.log("branched", urlBranched);
+        const urlBranchedColumnBVals = keywordResultSheet.getRange("H:H").getValues();
+        const urlBranchedLastRow = urlBranchedColumnBVals.filter(String).length;
+        keywordResultSheet
+            .getRange(urlBranchedLastRow + 1, 8, urlBranched.length, urlBranched[0].length)
+            .setValues(urlBranched);
+        keywordResultSheet.getRange(urlBranchedLastRow + 1, 13, urlBranched.length).setNumberFormat("0.00%"); //CTRの表示形式変更
+    }
+};
+
 const getSearchConsoleReusults = (
     spreadSheet: GoogleAppsScript.Spreadsheet.Spreadsheet,
     startDate: Date,
@@ -104,111 +233,15 @@ const getSearchConsoleReusults = (
     const keywordUrl = getKeywordUrlClass(spreadSheet);
 
     for (const keyword of Object.keys(keywordUrl)) {
-        // KWを半角全角許容する
-        const keyword_ = "^" + keyword.replace(" ", "( |　)").replace("　", "( |　)") + "$";
+        const responseData = getDataFromSearchConsole(keyword, startDate, endDate, apiURL, maxRecord);
 
-        // ペイロードの設定 キーワードひとつずつにしか送れない?
-        const payload = {
-            startDate: format(startDate, "yyyy-MM-dd"),
-            endDate: format(endDate, "yyyy-MM-dd"),
-            dimensions: ["query", "page"], // このフィルターが適用されるディメンション。
-            rowLimit: maxRecord, //取得するキーワードの最大数
-            dimensionFilterGroups: [
-                {
-                    filters: [
-                        {
-                            dimension: "query", //指定されたクエリ文字列に対してフィルター処理します。
-                            operator: "includingRegex", //指定した値が行のディメンション値とどのように一致する (または一致しない) 必要があるか
-                            expression: keyword_, //演算子に応じて、一致または除外するフィルターの値。
-                        },
-                    ],
-                },
-            ],
-        };
+        if (!(typeof responseData["rows"] === "undefined" || responseData["rows"].length === 0)) {
+            const results = formatData(responseData, keywordUrl, keyword);
+            const urlMatched = results.matched;
+            const urlNotMatched = results.notMatched;
+            const urlBranched = results.branched;
 
-        //ヘッダーのオプション指定
-        const options = {
-            payload: JSON.stringify(payload),
-            myamethod: "POST",
-            muteHttpExceptions: true,
-            headers: { Authorization: "Bearer " + ScriptApp.getOAuthToken() },
-            contentType: "application/json",
-        };
-
-        //APIにリクエスト送信→レスポンスをもらう
-        const response = UrlFetchApp.fetch(apiURL, options);
-        //レスポンスの内容をJSONファイルへ
-        const json = JSON.parse(response.getContentText());
-
-        const urlMatched = []; //URLに一致
-        const urlNotMatched = []; //URLに不一致
-        const urlBranched = []; //分岐
-
-        if (!(typeof json["rows"] === "undefined" || json["rows"].length === 0)) {
-            //分解したデータを配列化して、入れ物の配列にpushでぶちこんでいく
-            for (let i = 0; i < json["rows"].length; i++) {
-                // URLが対策URLと一致するなら
-                if (keywordUrl[keyword].includes(json["rows"][i]["keys"][1])) {
-                    urlMatched.push([
-                        json["rows"][i]["keys"][0],
-                        json["rows"][i]["keys"][1],
-                        json["rows"][i]["clicks"],
-                        json["rows"][i]["impressions"],
-                        json["rows"][i]["position"],
-                        json["rows"][i]["ctr"],
-                    ]);
-                }
-                // 対策URLと一致しないかつ枝付きじゃないかつクリック数が1以上
-                else if (!json["rows"][i]["keys"][1].match("#") && json["rows"][i]["clicks"] >= 1) {
-                    urlNotMatched.push([
-                        json["rows"][i]["keys"][0],
-                        json["rows"][i]["keys"][1],
-                        json["rows"][i]["clicks"],
-                        json["rows"][i]["impressions"],
-                        json["rows"][i]["position"],
-                        json["rows"][i]["ctr"],
-                    ]);
-                }
-                // URLが枝付きかつクリックが1以上なら
-                else if (json["rows"][i]["clicks"] >= 1) {
-                    urlBranched.push([
-                        json["rows"][i]["keys"][0],
-                        json["rows"][i]["keys"][1],
-                        json["rows"][i]["clicks"],
-                        json["rows"][i]["impressions"],
-                        json["rows"][i]["position"],
-                        json["rows"][i]["ctr"],
-                    ]);
-                }
-            }
-
-            if (urlMatched.length >= 1) {
-                const urlMatchedColumnBVals = keywordUrlReusltSheet.getRange("A:A").getValues();
-                const urlMatchedLastRow = urlMatchedColumnBVals.filter(String).length;
-                keywordUrlReusltSheet
-                    .getRange(urlMatchedLastRow + 1, 1, urlMatched.length, urlMatched[0].length)
-                    .setValues(urlMatched);
-                keywordUrlReusltSheet.getRange(urlMatchedLastRow + 1, 6, urlMatched.length).setNumberFormat("0.00%"); //CTRの表示形式変更
-            }
-            console.log(urlNotMatched);
-            if (urlNotMatched.length >= 1) {
-                const urlNotMatchedColumnBVals = keywordResultSheet.getRange("A:A").getValues();
-                const urlNotMatchedLastRow = urlNotMatchedColumnBVals.filter(String).length;
-                keywordResultSheet
-                    .getRange(urlNotMatchedLastRow + 1, 1, urlNotMatched.length, urlNotMatched[0].length)
-                    .setValues(urlNotMatched);
-                keywordResultSheet.getRange(urlNotMatchedLastRow + 1, 6, urlNotMatched.length).setNumberFormat("0.00%"); //CTRの表示形式変更
-            }
-
-            if (urlBranched.length >= 1) {
-                console.log("branched", urlBranched);
-                const urlBranchedColumnBVals = keywordResultSheet.getRange("H:H").getValues();
-                const urlBranchedLastRow = urlBranchedColumnBVals.filter(String).length;
-                keywordResultSheet
-                    .getRange(urlBranchedLastRow + 1, 8, urlBranched.length, urlBranched[0].length)
-                    .setValues(urlBranched);
-                keywordResultSheet.getRange(urlBranchedLastRow + 1, 13, urlBranched.length).setNumberFormat("0.00%"); //CTRの表示形式変更
-            }
+            writeInSpreadSheet(urlMatched, urlNotMatched, urlBranched, keywordUrlReusltSheet, keywordResultSheet);
         } else {
             console.log("該当するデータがありませんでした。");
         }
