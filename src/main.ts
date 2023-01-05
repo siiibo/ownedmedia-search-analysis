@@ -6,6 +6,17 @@ type KeywordUrl = {
     url: string;
 };
 
+type SearchConsoleResponse = {
+    responseAggregationType: string;
+    rows: {
+        clicks: number;
+        ctr: number;
+        impressions: number;
+        keys: string[]; // request時に指定したdimensionに依存?
+        position: number;
+    }[];
+};
+
 // 検索を実行するまで: 対象スプシの指定→対象スプシをOpenしたらUI上にアドオンメニューを追加する→操作者がUIを操作して検索実行
 export const init = () => {
     const spreadSheet = getSpreadSheet();
@@ -78,7 +89,7 @@ const getDataFromSearchConsole = (
     endDate: Date,
     apiUrl: string,
     maxRecord: number
-) => {
+): SearchConsoleResponse => {
     // KWを半角全角許容する
     const keyword_ = "^" + keyword.replace(" ", "( |　)").replace("　", "( |　)") + "$";
 
@@ -113,12 +124,12 @@ const getDataFromSearchConsole = (
     //APIにリクエスト送信→レスポンスをもらう
     const response = UrlFetchApp.fetch(apiUrl, options);
     //レスポンスの内容をJSONファイルへ
-    const responseData = JSON.parse(response.getContentText());
+    const responseData: SearchConsoleResponse = JSON.parse(response.getContentText());
     return responseData;
 };
 
 const formatData = (
-    json: any,
+    responseData: SearchConsoleResponse,
     urls: string[] | undefined
 ): { matched: any[][]; notMatched: any[][]; branched: any[][] } => {
     const urlMatched = []; //URLに一致
@@ -126,38 +137,38 @@ const formatData = (
     const urlBranched = []; //分岐
 
     //分解したデータを配列化して、入れ物の配列にpushでぶちこんでいく
-    for (let i = 0; i < json["rows"].length; i++) {
+    for (let i = 0; i < responseData["rows"].length; i++) {
         // URLが対策URLと一致するなら
-        if (urls?.includes(json["rows"][i]["keys"][1])) {
+        if (urls?.includes(responseData["rows"][i]["keys"][1])) {
             urlMatched.push([
-                json["rows"][i]["keys"][0],
-                json["rows"][i]["keys"][1],
-                json["rows"][i]["clicks"],
-                json["rows"][i]["impressions"],
-                json["rows"][i]["position"],
-                json["rows"][i]["ctr"],
+                responseData["rows"][i]["keys"][0],
+                responseData["rows"][i]["keys"][1],
+                responseData["rows"][i]["clicks"],
+                responseData["rows"][i]["impressions"],
+                responseData["rows"][i]["position"],
+                responseData["rows"][i]["ctr"],
             ]);
         }
         // 対策URLと一致しないかつ枝付きじゃないかつクリック数が1以上
-        else if (!json["rows"][i]["keys"][1].match("#") && json["rows"][i]["clicks"] >= 1) {
+        else if (!responseData["rows"][i]["keys"][1].match("#") && responseData["rows"][i]["clicks"] >= 1) {
             urlNotMatched.push([
-                json["rows"][i]["keys"][0],
-                json["rows"][i]["keys"][1],
-                json["rows"][i]["clicks"],
-                json["rows"][i]["impressions"],
-                json["rows"][i]["position"],
-                json["rows"][i]["ctr"],
+                responseData["rows"][i]["keys"][0],
+                responseData["rows"][i]["keys"][1],
+                responseData["rows"][i]["clicks"],
+                responseData["rows"][i]["impressions"],
+                responseData["rows"][i]["position"],
+                responseData["rows"][i]["ctr"],
             ]);
         }
         // URLが枝付きかつクリックが1以上なら
-        else if (json["rows"][i]["clicks"] >= 1) {
+        else if (responseData["rows"][i]["clicks"] >= 1) {
             urlBranched.push([
-                json["rows"][i]["keys"][0],
-                json["rows"][i]["keys"][1],
-                json["rows"][i]["clicks"],
-                json["rows"][i]["impressions"],
-                json["rows"][i]["position"],
-                json["rows"][i]["ctr"],
+                responseData["rows"][i]["keys"][0],
+                responseData["rows"][i]["keys"][1],
+                responseData["rows"][i]["clicks"],
+                responseData["rows"][i]["impressions"],
+                responseData["rows"][i]["position"],
+                responseData["rows"][i]["ctr"],
             ]);
         }
     }
