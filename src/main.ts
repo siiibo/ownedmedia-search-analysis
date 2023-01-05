@@ -12,15 +12,13 @@ type SearchConsoleResponse = {
         clicks: number;
         ctr: number;
         impressions: number;
-        keys: string[]; // request時に指定したdimensionに依存?
+        keys: string[];
         position: number;
     }[];
 };
 
-// 検索を実行するまで: 対象スプシの指定→対象スプシをOpenしたらUI上にアドオンメニューを追加する→操作者がUIを操作して検索実行
 export const init = () => {
     const spreadSheet = getSpreadSheet();
-    // トリガーの追加
     ScriptApp.newTrigger(createOnOpen.name).forSpreadsheet(spreadSheet).onOpen().create();
 };
 
@@ -42,18 +40,15 @@ export const askExecute = () => {
 };
 
 export const main = () => {
-    //スプレッドシートから期間の取得
     const spreadSheet = getSpreadSheet();
 
     const startEndDate = getStartEndDate(spreadSheet);
     const startDate = startEndDate.start;
     const endDate = startEndDate.end;
 
-    // 結果記入用シートの追加
     const keywordResultSheet = spreadSheet.insertSheet(3);
     const keywordUrlReusltSheet = spreadSheet.insertSheet(4);
 
-    // タイトルの設定
     setHeader(keywordResultSheet, keywordUrlReusltSheet);
 
     const keywordUrlSheet = spreadSheet.getSheetByName("対キーワードURL週次検索結果");
@@ -61,9 +56,7 @@ export const main = () => {
 
     const keywordUrl = getUrlsGroupedByKeyword(keywordUrlSheet);
 
-    // for (const keyword of Object.keys(keywordUrl)) {
     for (const [keyword, values] of Object.entries(keywordUrl)) {
-        // 対策URLの抽出
         const urls = values?.map((value) => {
             return value.url;
         });
@@ -126,36 +119,31 @@ const getDataFromSearchConsole = (keyword: string, startDate: Date, endDate: Dat
     // KWを半角全角許容する
     const keyword_ = "^" + keyword.replace(" ", "( |　)").replace("　", "( |　)") + "$";
 
-    //サーチコンソールから取得するキーワードの最大数を設定する
     const maxRecord = 1000;
 
-    //サーチコンソールに登録しているサイトドメイン
     const siteDomain = "siiibo.com";
 
-    //リクエストするAPIのURLを設定
     const apiUrl =
         "https://www.googleapis.com/webmasters/v3/sites/sc-domain%3A" + siteDomain + "/searchAnalytics/query";
 
-    // ペイロードの設定 キーワードひとつずつにしか送れない?
     const payload = {
         startDate: format(startDate, "yyyy-MM-dd"),
         endDate: format(endDate, "yyyy-MM-dd"),
-        dimensions: ["query", "page"], // このフィルターが適用されるディメンション。
+        dimensions: ["query", "page"],
         rowLimit: maxRecord, //取得するキーワードの最大数
         dimensionFilterGroups: [
             {
                 filters: [
                     {
-                        dimension: "query", //指定されたクエリ文字列に対してフィルター処理します。
-                        operator: "includingRegex", //指定した値が行のディメンション値とどのように一致する (または一致しない) 必要があるか
-                        expression: keyword_, //演算子に応じて、一致または除外するフィルターの値。
+                        dimension: "query",
+                        operator: "includingRegex",
+                        expression: keyword_,
                     },
                 ],
             },
         ],
     };
 
-    //ヘッダーのオプション指定
     const options = {
         payload: JSON.stringify(payload),
         myamethod: "POST",
@@ -164,9 +152,7 @@ const getDataFromSearchConsole = (keyword: string, startDate: Date, endDate: Dat
         contentType: "application/json",
     };
 
-    //APIにリクエスト送信→レスポンスをもらう
     const response = UrlFetchApp.fetch(apiUrl, options);
-    //レスポンスの内容をJSONファイルへ
     const responseData: SearchConsoleResponse = JSON.parse(response.getContentText());
     return responseData;
 };
@@ -179,7 +165,6 @@ const formatData = (
     const urlNotMatched = []; //URLに不一致
     const urlBranched = []; //分岐
 
-    //分解したデータを配列化して、入れ物の配列にpushでぶちこんでいく
     for (let i = 0; i < responseData["rows"].length; i++) {
         // URLが対策URLと一致するなら
         if (urls?.includes(responseData["rows"][i]["keys"][1])) {
