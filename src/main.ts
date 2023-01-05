@@ -106,7 +106,6 @@ const setHeader = (
 };
 
 function getUrlsGroupedByKeyword(keywordUrlSheet: GoogleAppsScript.Spreadsheet.Sheet) {
-    // const sheetValues = keywordUrlSheet.getRange(2, 1, keywordUrlSheet.getLastRow()-1, 2).getValues();
     const [_sheetHeader, ...sheetValues] = keywordUrlSheet.getDataRange().getValues();
     const keywordUrls: KeywordUrl[] = sheetValues.map((row) => {
         return {
@@ -164,9 +163,9 @@ const formatData = (
     responseData: SearchConsoleResponse,
     urls: string[] | undefined
 ): { matched: (string | number)[][]; notMatched: (string | number)[][]; branched: (string | number)[][] } => {
-    const urlMatched = []; //URLに一致
-    const urlNotMatched = []; //URLに不一致
-    const urlBranched = []; //分岐
+    const urlMatched = [];
+    const urlNotMatched = [];
+    const urlBranched = [];
 
     for (let i = 0; i < responseData["rows"].length; i++) {
         // URLが対策URLと一致するなら
@@ -219,7 +218,7 @@ const writeInSpreadSheet = (
         keywordUrlReusltSheet
             .getRange(urlMatchedLastRow + 1, 1, urlMatched.length, urlMatched[0].length)
             .setValues(urlMatched);
-        keywordUrlReusltSheet.getRange(urlMatchedLastRow + 1, 6, urlMatched.length).setNumberFormat("0.00%"); //CTRの表示形式変更
+        keywordUrlReusltSheet.getRange(urlMatchedLastRow + 1, 6, urlMatched.length).setNumberFormat("0.00%");
     }
     console.log(urlNotMatched);
     if (urlNotMatched.length >= 1) {
@@ -228,7 +227,7 @@ const writeInSpreadSheet = (
         keywordResultSheet
             .getRange(urlNotMatchedLastRow + 1, 1, urlNotMatched.length, urlNotMatched[0].length)
             .setValues(urlNotMatched);
-        keywordResultSheet.getRange(urlNotMatchedLastRow + 1, 6, urlNotMatched.length).setNumberFormat("0.00%"); //CTRの表示形式変更
+        keywordResultSheet.getRange(urlNotMatchedLastRow + 1, 6, urlNotMatched.length).setNumberFormat("0.00%");
     }
 
     if (urlBranched.length >= 1) {
@@ -238,6 +237,6 @@ const writeInSpreadSheet = (
         keywordResultSheet
             .getRange(urlBranchedLastRow + 1, 8, urlBranched.length, urlBranched[0].length)
             .setValues(urlBranched);
-        keywordResultSheet.getRange(urlBranchedLastRow + 1, 13, urlBranched.length).setNumberFormat("0.00%"); //CTRの表示形式変更
+        keywordResultSheet.getRange(urlBranchedLastRow + 1, 13, urlBranched.length).setNumberFormat("0.00%");
     }
 };
