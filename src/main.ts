@@ -104,7 +104,7 @@ const setHeader = (
 
 function getUrlsGroupedByKeyword(keywordUrlSheet: GoogleAppsScript.Spreadsheet.Sheet) {
     // const sheetValues = keywordUrlSheet.getRange(2, 1, keywordUrlSheet.getLastRow()-1, 2).getValues();
-    const [sheetHeader, ...sheetValues] = keywordUrlSheet.getDataRange().getValues();
+    const [_sheetHeader, ...sheetValues] = keywordUrlSheet.getDataRange().getValues();
     const keywordUrls: KeywordUrl[] = sheetValues.map((row) => {
         return {
             keyword: row[0],
