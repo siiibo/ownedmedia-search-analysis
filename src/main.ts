@@ -121,7 +121,7 @@ const getDataFromSearchConsole = (keyword: string, startDate: Date, endDate: Dat
     // KWに対し半角全角を許容
     const regexKeyword = "^" + keyword.replace(" ", "( |　)").replace("　", "( |　)") + "$";
 
-    const maxRecord = 1000;
+    const maxRow = 1000;
 
     const siteDomain = "siiibo.com";
 
@@ -132,7 +132,7 @@ const getDataFromSearchConsole = (keyword: string, startDate: Date, endDate: Dat
         startDate: format(startDate, "yyyy-MM-dd"),
         endDate: format(endDate, "yyyy-MM-dd"),
         dimensions: ["query", "page"],
-        rowLimit: maxRecord, //取得するキーワードの最大数
+        rowLimit: maxRow, //取得するキーワードの最大数
         dimensionFilterGroups: [
             {
                 filters: [
