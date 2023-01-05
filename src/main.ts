@@ -48,7 +48,55 @@ export const main = () => {
     const startEndDate = getStartEndDate(spreadSheet);
     const startDate = startEndDate.start;
     const endDate = startEndDate.end;
-    getSearchConsoleResults(spreadSheet, startDate, endDate);
+
+    // 結果記入用シートの追加
+    const keywordResultSheet = spreadSheet.insertSheet(3);
+    const keywordUrlReusltSheet = spreadSheet.insertSheet(4);
+
+    // タイトルの設定
+    setHeader(keywordResultSheet, keywordUrlReusltSheet);
+
+    //サーチコンソールに登録しているサイトドメイン
+    const siteDomain = "siiibo.com";
+
+    //リクエストするAPIのURLを設定
+    const apiUrl =
+        "https://www.googleapis.com/webmasters/v3/sites/sc-domain%3A" + siteDomain + "/searchAnalytics/query";
+    //サーチコンソールから取得するキーワードの最大数を設定する
+    const maxRecord = 1000;
+
+    const keywordUrlSheet = spreadSheet.getSheetByName("対キーワードURL週次検索結果");
+    if (!keywordUrlSheet) throw new Error("SHEET is not defined");
+
+    const keywordUrl = getUrlsGroupedByKeyword(keywordUrlSheet);
+
+    // for (const keyword of Object.keys(keywordUrl)) {
+    for (const [keyword, values] of Object.entries(keywordUrl)) {
+        // 対策URLの抽出
+        const urls = values?.map((value) => {
+            return value.url;
+        });
+        const responseData = getDataFromSearchConsole(keyword, startDate, endDate, apiUrl, maxRecord);
+
+        if (!(typeof responseData["rows"] === "undefined" || responseData["rows"].length === 0)) {
+            if (keywordUrl[keyword] != undefined) {
+                const results = formatData(responseData, urls);
+                const urlMatched = results.matched;
+                const urlNotMatched = results.notMatched;
+                const urlBranched = results.branched;
+
+                writeInSpreadSheet(urlMatched, urlNotMatched, urlBranched, keywordUrlReusltSheet, keywordResultSheet);
+            }
+        } else {
+            console.log("該当するデータがありませんでした。");
+        }
+    }
+    keywordResultSheet.setName(
+        format(startDate, "yyyy-MM-dd") + "~" + format(endDate, "MM-dd") + "-" + "対キーワード週次検索結果"
+    );
+    keywordUrlReusltSheet.setName(
+        format(startDate, "yyyy-MM-dd") + "~" + format(endDate, "MM-dd") + "-" + "対キーワードURL週次検索結果"
+    );
 };
 const getStartEndDate = (spreadSheet: GoogleAppsScript.Spreadsheet.Spreadsheet) => {
     const periodSheet = spreadSheet.getSheetByName("期間指定");
@@ -209,59 +257,4 @@ const writeInSpreadSheet = (
             .setValues(urlBranched);
         keywordResultSheet.getRange(urlBranchedLastRow + 1, 13, urlBranched.length).setNumberFormat("0.00%"); //CTRの表示形式変更
     }
-};
-
-const getSearchConsoleResults = (
-    spreadSheet: GoogleAppsScript.Spreadsheet.Spreadsheet,
-    startDate: Date,
-    endDate: Date
-) => {
-    // 結果記入用シートの追加
-    const keywordResultSheet = spreadSheet.insertSheet(3);
-    const keywordUrlReusltSheet = spreadSheet.insertSheet(4);
-
-    // タイトルの設定
-    setHeader(keywordResultSheet, keywordUrlReusltSheet);
-
-    //サーチコンソールに登録しているサイトドメイン
-    const siteDomain = "siiibo.com";
-
-    //リクエストするAPIのURLを設定
-    const apiUrl =
-        "https://www.googleapis.com/webmasters/v3/sites/sc-domain%3A" + siteDomain + "/searchAnalytics/query";
-    //サーチコンソールから取得するキーワードの最大数を設定する
-    const maxRecord = 1000;
-
-    const keywordUrlSheet = spreadSheet.getSheetByName("対キーワードURL週次検索結果");
-    if (!keywordUrlSheet) throw new Error("SHEET is not defined");
-
-    const keywordUrl = getUrlsGroupedByKeyword(keywordUrlSheet);
-
-    // for (const keyword of Object.keys(keywordUrl)) {
-    for (const [keyword, values] of Object.entries(keywordUrl)) {
-        // 対策URLの抽出
-        const urls = values?.map((value) => {
-            return value.url;
-        });
-        const responseData = getDataFromSearchConsole(keyword, startDate, endDate, apiUrl, maxRecord);
-
-        if (!(typeof responseData["rows"] === "undefined" || responseData["rows"].length === 0)) {
-            if (keywordUrl[keyword] != undefined) {
-                const results = formatData(responseData, urls);
-                const urlMatched = results.matched;
-                const urlNotMatched = results.notMatched;
-                const urlBranched = results.branched;
-
-                writeInSpreadSheet(urlMatched, urlNotMatched, urlBranched, keywordUrlReusltSheet, keywordResultSheet);
-            }
-        } else {
-            console.log("該当するデータがありませんでした。");
-        }
-    }
-    keywordResultSheet.setName(
-        format(startDate, "yyyy-MM-dd") + "~" + format(endDate, "MM-dd") + "-" + "対キーワード週次検索結果"
-    );
-    keywordUrlReusltSheet.setName(
-        format(startDate, "yyyy-MM-dd") + "~" + format(endDate, "MM-dd") + "-" + "対キーワードURL週次検索結果"
-    );
 };
