@@ -160,7 +160,7 @@ const getDataFromSearchConsole = (keyword: string, startDate: Date, endDate: Dat
 const formatData = (
     responseData: SearchConsoleResponse,
     urls: string[] | undefined
-): { matched: any[][]; notMatched: any[][]; branched: any[][] } => {
+): { matched: (string | number)[][]; notMatched: (string | number)[][]; branched: (string | number)[][] } => {
     const urlMatched = []; //URLに一致
     const urlNotMatched = []; //URLに不一致
     const urlBranched = []; //分岐
@@ -204,9 +204,9 @@ const formatData = (
 };
 
 const writeInSpreadSheet = (
-    urlMatched: any[][],
-    urlNotMatched: any[][],
-    urlBranched: any[][],
+    urlMatched: (string | number)[][],
+    urlNotMatched: (string | number)[][],
+    urlBranched: (string | number)[][],
     keywordUrlReusltSheet: GoogleAppsScript.Spreadsheet.Sheet,
     keywordResultSheet: GoogleAppsScript.Spreadsheet.Sheet
 ) => {
