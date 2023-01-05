@@ -56,15 +56,6 @@ export const main = () => {
     // タイトルの設定
     setHeader(keywordResultSheet, keywordUrlReusltSheet);
 
-    //サーチコンソールに登録しているサイトドメイン
-    const siteDomain = "siiibo.com";
-
-    //リクエストするAPIのURLを設定
-    const apiUrl =
-        "https://www.googleapis.com/webmasters/v3/sites/sc-domain%3A" + siteDomain + "/searchAnalytics/query";
-    //サーチコンソールから取得するキーワードの最大数を設定する
-    const maxRecord = 1000;
-
     const keywordUrlSheet = spreadSheet.getSheetByName("対キーワードURL週次検索結果");
     if (!keywordUrlSheet) throw new Error("SHEET is not defined");
 
@@ -76,7 +67,7 @@ export const main = () => {
         const urls = values?.map((value) => {
             return value.url;
         });
-        const responseData = getDataFromSearchConsole(keyword, startDate, endDate, apiUrl, maxRecord);
+        const responseData = getDataFromSearchConsole(keyword, startDate, endDate);
 
         if (!(typeof responseData["rows"] === "undefined" || responseData["rows"].length === 0)) {
             if (keywordUrl[keyword] != undefined) {
@@ -131,15 +122,19 @@ function getUrlsGroupedByKeyword(keywordUrlSheet: GoogleAppsScript.Spreadsheet.S
     return urlGroupedByKeyword;
 }
 
-const getDataFromSearchConsole = (
-    keyword: string,
-    startDate: Date,
-    endDate: Date,
-    apiUrl: string,
-    maxRecord: number
-): SearchConsoleResponse => {
+const getDataFromSearchConsole = (keyword: string, startDate: Date, endDate: Date): SearchConsoleResponse => {
     // KWを半角全角許容する
     const keyword_ = "^" + keyword.replace(" ", "( |　)").replace("　", "( |　)") + "$";
+
+    //サーチコンソールから取得するキーワードの最大数を設定する
+    const maxRecord = 1000;
+
+    //サーチコンソールに登録しているサイトドメイン
+    const siteDomain = "siiibo.com";
+
+    //リクエストするAPIのURLを設定
+    const apiUrl =
+        "https://www.googleapis.com/webmasters/v3/sites/sc-domain%3A" + siteDomain + "/searchAnalytics/query";
 
     // ペイロードの設定 キーワードひとつずつにしか送れない?
     const payload = {
