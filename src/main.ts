@@ -57,7 +57,10 @@ export const main = () => {
     const keywordUrl = getUrlsGroupedByKeyword(keywordUrlSheet);
 
     for (const [keyword, values] of Object.entries(keywordUrl)) {
-        const urls = values?.map((value) => {
+        if (values == undefined) {
+            continue;
+        }
+        const urls = values.map((value) => {
             return value.url;
         });
         const responseData = getDataFromSearchConsole(keyword, startDate, endDate);
