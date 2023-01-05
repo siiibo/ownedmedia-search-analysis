@@ -118,8 +118,8 @@ function getUrlsGroupedByKeyword(keywordUrlSheet: GoogleAppsScript.Spreadsheet.S
 }
 
 const getDataFromSearchConsole = (keyword: string, startDate: Date, endDate: Date): SearchConsoleResponse => {
-    // KWを半角全角許容する
-    const keyword_ = "^" + keyword.replace(" ", "( |　)").replace("　", "( |　)") + "$";
+    // KWに対し半角全角を許容
+    const regexKeyword = "^" + keyword.replace(" ", "( |　)").replace("　", "( |　)") + "$";
 
     const maxRecord = 1000;
 
@@ -139,7 +139,7 @@ const getDataFromSearchConsole = (keyword: string, startDate: Date, endDate: Dat
                     {
                         dimension: "query",
                         operator: "includingRegex",
-                        expression: keyword_,
+                        expression: regexKeyword,
                     },
                 ],
             },
