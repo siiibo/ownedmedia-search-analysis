@@ -146,9 +146,9 @@ const getDataFromSearchConsole = (keyword: string, startDate: Date, endDate: Dat
         ],
     };
 
-    const options = {
+    const options: GoogleAppsScript.URL_Fetch.URLFetchRequestOptions = {
         payload: JSON.stringify(payload),
-        myamethod: "POST",
+        method: "post",
         muteHttpExceptions: true,
         headers: { Authorization: "Bearer " + ScriptApp.getOAuthToken() },
         contentType: "application/json",
