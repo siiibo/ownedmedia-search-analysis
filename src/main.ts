@@ -95,14 +95,14 @@ const getStartEndDate = (spreadSheet: GoogleAppsScript.Spreadsheet.Spreadsheet) 
 
 const setHeader = (
     keywordResultSheet: GoogleAppsScript.Spreadsheet.Sheet,
-    keywordUrlReusltSheet: GoogleAppsScript.Spreadsheet.Sheet
+    keywordUrlResultSheet: GoogleAppsScript.Spreadsheet.Sheet
 ) => {
     const header = [["キーワード", "記事URL", "クリック数", "インプレッション", "平均順位", "平均CTR"]];
     keywordResultSheet.getRange(1, 1, 1, 1).setValues([["意図していない表示URL"]]);
     keywordResultSheet.getRange(2, 1, 1, header[0].length).setValues(header);
     keywordResultSheet.getRange(1, 1 + header[0].length + 1, 1, 1).setValues([["枝付きURL"]]);
     keywordResultSheet.getRange(2, 1 + header[0].length + 1, 1, header[0].length).setValues(header);
-    keywordUrlReusltSheet.getRange(1, 1, 1, header[0].length).setValues(header);
+    keywordUrlResultSheet.getRange(1, 1, 1, header[0].length).setValues(header);
 };
 
 function getUrlsGroupedByKeyword(keywordUrlSheet: GoogleAppsScript.Spreadsheet.Sheet) {
