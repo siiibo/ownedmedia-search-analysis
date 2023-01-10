@@ -18,14 +18,14 @@ type SearchConsoleResponse = {
 };
 
 export const init = () => {
-    const spreadSheet = getSpreadSheet();
-    ScriptApp.newTrigger(createOnOpen.name).forSpreadsheet(spreadSheet).onOpen().create();
+    const spreadsheet = getSpreadsheet();
+    ScriptApp.newTrigger(createOnOpen.name).forSpreadsheet(spreadsheet).onOpen().create();
 };
 
-const getSpreadSheet = (): GoogleAppsScript.Spreadsheet.Spreadsheet => {
-    const spreadSheetUrl = PropertiesService.getScriptProperties().getProperty("SPREAD_SHEET_URL");
-    if (!spreadSheetUrl) throw new Error("SPREAD_SHEET_URL is not defined");
-    return SpreadsheetApp.openByUrl(spreadSheetUrl);
+const getSpreadsheet = (): GoogleAppsScript.Spreadsheet.Spreadsheet => {
+    const spreadsheetUrl = PropertiesService.getScriptProperties().getProperty("SPREAD_SHEET_URL");
+    if (!spreadsheetUrl) throw new Error("SPREAD_SHEET_URL is not defined");
+    return SpreadsheetApp.openByUrl(spreadsheetUrl);
 };
 
 export const createOnOpen = () => {
@@ -40,18 +40,18 @@ export const askExecute = () => {
 };
 
 export const main = () => {
-    const spreadSheet = getSpreadSheet();
+    const spreadsheet = getSpreadsheet();
 
-    const startEndDate = getStartEndDate(spreadSheet);
+    const startEndDate = getStartEndDate(spreadsheet);
     const startDate = startEndDate.start;
     const endDate = startEndDate.end;
 
-    const keywordResultSheet = spreadSheet.insertSheet(3);
-    const keywordUrlResultSheet = spreadSheet.insertSheet(4);
+    const keywordResultSheet = spreadsheet.insertSheet(3);
+    const keywordUrlResultSheet = spreadsheet.insertSheet(4);
 
     setHeader(keywordResultSheet, keywordUrlResultSheet);
 
-    const keywordUrlSheet = spreadSheet.getSheetByName("対キーワードURL週次検索結果");
+    const keywordUrlSheet = spreadsheet.getSheetByName("対キーワードURL週次検索結果");
     if (!keywordUrlSheet) throw new Error("SHEET is not defined");
 
     const keywordUrl = getUrlsGroupedByKeyword(keywordUrlSheet);
@@ -72,7 +72,7 @@ export const main = () => {
                 const urlNotMatched = results.notMatched;
                 const urlBranched = results.branched;
 
-                writeInSpreadSheet(urlMatched, urlNotMatched, urlBranched, keywordUrlResultSheet, keywordResultSheet);
+                writeInSpreadsheet(urlMatched, urlNotMatched, urlBranched, keywordUrlResultSheet, keywordResultSheet);
             }
         } else {
             console.log("該当するデータがありませんでした。");
@@ -85,8 +85,8 @@ export const main = () => {
         format(startDate, "yyyy-MM-dd") + "~" + format(endDate, "MM-dd") + "-" + "対キーワードURL週次検索結果"
     );
 };
-const getStartEndDate = (spreadSheet: GoogleAppsScript.Spreadsheet.Spreadsheet) => {
-    const periodSheet = spreadSheet.getSheetByName("期間指定");
+const getStartEndDate = (spreadsheet: GoogleAppsScript.Spreadsheet.Spreadsheet) => {
+    const periodSheet = spreadsheet.getSheetByName("期間指定");
     if (!periodSheet) throw new Error("periodSheet is not defined");
     const startDate = periodSheet.getRange("B4").getValue();
     const endDate = endOfDay(periodSheet.getRange("C4").getValue());
@@ -205,7 +205,7 @@ const formatData = (
     return { matched: urlMatched, notMatched: urlNotMatched, branched: urlBranched };
 };
 
-const writeInSpreadSheet = (
+const writeInSpreadsheet = (
     urlMatched: (string | number)[][],
     urlNotMatched: (string | number)[][],
     urlBranched: (string | number)[][],
