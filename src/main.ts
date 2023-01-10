@@ -47,15 +47,15 @@ export const main = () => {
     const startDate = startEndDate.start;
     const endDate = startEndDate.end;
 
-    const keywordResultSheet = spreadsheet.insertSheet(3);
-    const keywordUrlResultSheet = spreadsheet.insertSheet(4);
-
-    setHeader(keywordResultSheet, keywordUrlResultSheet);
-
     const keywordUrlSheet = spreadsheet.getSheetByName("対キーワードURL週次検索結果");
     if (!keywordUrlSheet) throw new Error("SHEET is not defined");
 
     const keywordUrl = getUrlsGroupedByKeyword(keywordUrlSheet);
+
+    const keywordResultSheet = spreadsheet.insertSheet(3);
+    const keywordUrlResultSheet = spreadsheet.insertSheet(4);
+
+    setHeader(keywordResultSheet, keywordUrlResultSheet);
 
     for (const [keyword, values] of Object.entries(keywordUrl)) {
         if (values == undefined) {
