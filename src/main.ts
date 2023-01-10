@@ -47,9 +47,9 @@ export const main = () => {
     const endDate = startEndDate.end;
 
     const keywordResultSheet = spreadSheet.insertSheet(3);
-    const keywordUrlReusltSheet = spreadSheet.insertSheet(4);
+    const keywordUrlResultSheet = spreadSheet.insertSheet(4);
 
-    setHeader(keywordResultSheet, keywordUrlReusltSheet);
+    setHeader(keywordResultSheet, keywordUrlResultSheet);
 
     const keywordUrlSheet = spreadSheet.getSheetByName("対キーワードURL週次検索結果");
     if (!keywordUrlSheet) throw new Error("SHEET is not defined");
@@ -72,7 +72,7 @@ export const main = () => {
                 const urlNotMatched = results.notMatched;
                 const urlBranched = results.branched;
 
-                writeInSpreadSheet(urlMatched, urlNotMatched, urlBranched, keywordUrlReusltSheet, keywordResultSheet);
+                writeInSpreadSheet(urlMatched, urlNotMatched, urlBranched, keywordUrlResultSheet, keywordResultSheet);
             }
         } else {
             console.log("該当するデータがありませんでした。");
@@ -81,7 +81,7 @@ export const main = () => {
     keywordResultSheet.setName(
         format(startDate, "yyyy-MM-dd") + "~" + format(endDate, "MM-dd") + "-" + "対キーワード週次検索結果"
     );
-    keywordUrlReusltSheet.setName(
+    keywordUrlResultSheet.setName(
         format(startDate, "yyyy-MM-dd") + "~" + format(endDate, "MM-dd") + "-" + "対キーワードURL週次検索結果"
     );
 };
@@ -209,16 +209,16 @@ const writeInSpreadSheet = (
     urlMatched: (string | number)[][],
     urlNotMatched: (string | number)[][],
     urlBranched: (string | number)[][],
-    keywordUrlReusltSheet: GoogleAppsScript.Spreadsheet.Sheet,
+    keywordUrlResultSheet: GoogleAppsScript.Spreadsheet.Sheet,
     keywordResultSheet: GoogleAppsScript.Spreadsheet.Sheet
 ) => {
     if (urlMatched.length >= 1) {
-        const urlMatchedColumnBVals = keywordUrlReusltSheet.getRange("A:A").getValues();
+        const urlMatchedColumnBVals = keywordUrlResultSheet.getRange("A:A").getValues();
         const urlMatchedLastRow = urlMatchedColumnBVals.filter(String).length;
-        keywordUrlReusltSheet
+        keywordUrlResultSheet
             .getRange(urlMatchedLastRow + 1, 1, urlMatched.length, urlMatched[0].length)
             .setValues(urlMatched);
-        keywordUrlReusltSheet.getRange(urlMatchedLastRow + 1, 6, urlMatched.length).setNumberFormat("0.00%");
+        keywordUrlResultSheet.getRange(urlMatchedLastRow + 1, 6, urlMatched.length).setNumberFormat("0.00%");
     }
     console.log(urlNotMatched);
     if (urlNotMatched.length >= 1) {
