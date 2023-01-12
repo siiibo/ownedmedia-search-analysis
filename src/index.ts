@@ -6,6 +6,7 @@ import { init, createOnOpen, askExecute, main } from "./main";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 declare const global: any;
+
 global.init = init;
 global.createOnOpen = createOnOpen;
 global.askExecute = askExecute;
