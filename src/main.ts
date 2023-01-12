@@ -114,10 +114,20 @@ function getUrlsGroupedByKeyword(keywordUrlSheet: GoogleAppsScript.Spreadsheet.S
     return urlGroupedByKeyword;
 }
 
+const modifyKeyword = (keyword: string): string => {
+    if (keyword.indexOf(" ") != -1) {
+        const regexKeyword = "^" + keyword.replaceAll(" ", "( |　)") + "$";
+        return regexKeyword;
+    } else if (keyword.indexOf("　") != -1) {
+        const regexKeyword = "^" + keyword.replaceAll("　", "( |　)") + "$";
+        return regexKeyword;
+    } else {
+        const regexKeyword = keyword;
+        return regexKeyword;
+    }
+};
 const getDataFromSearchConsole = (keyword: string, startDate: Date, endDate: Date): SearchConsoleResponse => {
-    // KWに対し半角全角を許容
-    const regexKeyword = "^" + keyword.replace(" ", "( |　)").replace("　", "( |　)") + "$";
-
+    const regexKeyword = modifyKeyword(keyword); // 単語間の空白の半角，全角のによる検索結果の違いをなくすため
     const maxRow = 1000;
 
     const siteDomain = "siiibo.com";
