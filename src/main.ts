@@ -43,9 +43,7 @@ export const main = () => {
     const spreadsheet = getSpreadsheet();
     const periodSheet = spreadsheet.getSheetByName("期間指定");
     if (!periodSheet) throw new Error("periodSheet is not defined");
-    const startEndDate = getStartEndDate(periodSheet);
-    const startDate = startEndDate.start;
-    const endDate = startEndDate.end;
+    const { startDate, endDate } = getStartEndDate(periodSheet);
 
     const keywordUrlSheet = spreadsheet.getSheetByName("対キーワードURL週次検索結果");
     if (!keywordUrlSheet) throw new Error("SHEET is not defined");
@@ -86,10 +84,10 @@ export const main = () => {
         format(startDate, "yyyy-MM-dd") + "~" + format(endDate, "MM-dd") + "-" + "対キーワードURL週次検索結果"
     );
 };
-const getStartEndDate = (periodSheet: GoogleAppsScript.Spreadsheet.Sheet) => {
+const getStartEndDate = (periodSheet: GoogleAppsScript.Spreadsheet.Sheet): { startDate: Date; endDate: Date } => {
     const startDate = periodSheet.getRange("B4").getValue();
     const endDate = endOfDay(periodSheet.getRange("C4").getValue());
-    return { start: startDate, end: endDate };
+    return { startDate, endDate };
 };
 
 const setHeader = (
