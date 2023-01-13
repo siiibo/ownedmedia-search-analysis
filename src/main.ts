@@ -114,6 +114,7 @@ function getUrlsGroupedByKeyword(keywordUrlSheet: GoogleAppsScript.Spreadsheet.S
     return urlGroupedByKeyword;
 }
 
+//空白が全角・半角の両方ある場合は考慮してない理由: 記入者が1KWに対し全角，半角両方の空白を使うという状況はまずない & 両方を考慮した場合の実装が煩雑になりそう
 const modifyKeyword = (keyword: string): string => {
     if (keyword.indexOf(" ") != -1) {
         const regexKeyword = "^" + keyword.replaceAll(" ", "( |　)") + "$";
@@ -122,7 +123,7 @@ const modifyKeyword = (keyword: string): string => {
         const regexKeyword = "^" + keyword.replaceAll("　", "( |　)") + "$";
         return regexKeyword;
     } else {
-        const regexKeyword = keyword;
+        const regexKeyword = "^" + keyword + "$";
         return regexKeyword;
     }
 };
