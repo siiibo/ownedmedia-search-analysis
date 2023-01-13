@@ -29,6 +29,13 @@
         "caughtErrorsIgnorePattern": "^_",
         "destructuredArrayIgnorePattern": "^_"
       }
-    ]
+    ], 
+    "no-irregular-whitespace": [
+      "warn",
+      {
+        "skipRegExps": true
+      }
+]
   }
+
 }
