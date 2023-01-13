@@ -114,21 +114,18 @@ function getUrlsGroupedByKeyword(keywordUrlSheet: GoogleAppsScript.Spreadsheet.S
     return urlGroupedByKeyword;
 }
 
-//空白が全角・半角の両方ある場合は考慮してない理由: 記入者が1KWに対し全角，半角両方の空白を使うという状況はまずない & 両方を考慮した場合の実装が煩雑になりそう
-const modifyKeyword = (keyword: string): string => {
-    if (keyword.indexOf(" ") !== -1) {
-        const regexKeyword = "^" + keyword.replaceAll(" ", "( |　)") + "$";
-        return regexKeyword;
-    } else if (keyword.indexOf("　") !== -1) {
-        const regexKeyword = "^" + keyword.replaceAll("　", "( |　)") + "$";
-        return regexKeyword;
-    } else {
-        const regexKeyword = "^" + keyword + "$";
-        return regexKeyword;
-    }
+/**
+ * スペース（全角・半角）を、全角または半角スペースを受け入れる正規表現に変換する.
+ *
+ * キーワードに含まれるスペースの全角・半角の違いにより，検索結果が違いが生じるので，
+ * 全角・半角のどちらでも同じ結果を得るため．
+ */
+const convertSpaceToZenkakuHankakuSpaceRegExp = (s: string) => {
+    return `${s.replace(/ |　/g, "( |　)")}`;
 };
+
 const getDataFromSearchConsole = (keyword: string, startDate: Date, endDate: Date): SearchConsoleResponse => {
-    const regexKeyword = modifyKeyword(keyword); // 単語間の空白の半角，全角のによる検索結果の違いをなくすため
+    const keywordRegExp = `^${convertSpaceToZenkakuHankakuSpaceRegExp(keyword)}$`;
     const maxRow = 1000;
 
     const siteDomain = "siiibo.com";
@@ -147,7 +144,7 @@ const getDataFromSearchConsole = (keyword: string, startDate: Date, endDate: Dat
                     {
                         dimension: "query",
                         operator: "includingRegex",
-                        expression: regexKeyword,
+                        expression: keywordRegExp,
                     },
                 ],
             },
