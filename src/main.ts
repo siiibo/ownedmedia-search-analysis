@@ -45,15 +45,14 @@ export const main = () => {
     if (!periodSheet) throw new Error("periodSheet is not defined");
     const { startDate, endDate } = getStartEndDate(periodSheet);
 
-    const keywordUrlSheet = spreadsheet.getSheetByName("対キーワードURL週次検索結果");
+    const keywordUrlSheet = spreadsheet.getSheetByName("キーワードURL指定");
     if (!keywordUrlSheet) throw new Error("SHEET is not defined");
 
     const keywordUrl = getUrlsGroupedByKeyword(keywordUrlSheet);
 
-    const keywordResultSheet = spreadsheet.insertSheet(3);
-    const keywordUrlResultSheet = spreadsheet.insertSheet(4);
+    const resultSheet = spreadsheet.insertSheet(3);
 
-    setHeader(keywordResultSheet, keywordUrlResultSheet);
+    setHeader(resultSheet);
 
     for (const [keyword, values] of Object.entries(keywordUrl)) {
         if (values == undefined) {
@@ -66,23 +65,15 @@ export const main = () => {
 
         if (!(typeof responseData["rows"] === "undefined" || responseData["rows"].length === 0)) {
             if (keywordUrl[keyword] != undefined) {
-                const results = formatData(responseData, urls);
-                const urlMatched = results.matched;
-                const urlNotMatched = results.notMatched;
-                const urlBranched = results.branched;
+                const result = formatData(responseData, urls);
 
-                writeInSpreadsheet(urlMatched, urlNotMatched, urlBranched, keywordUrlResultSheet, keywordResultSheet);
+                writeInSpreadsheet(result, resultSheet);
             }
         } else {
             console.log("該当するデータがありませんでした。");
         }
     }
-    keywordResultSheet.setName(
-        format(startDate, "yyyy-MM-dd") + "~" + format(endDate, "MM-dd") + "-" + "対キーワード週次検索結果"
-    );
-    keywordUrlResultSheet.setName(
-        format(startDate, "yyyy-MM-dd") + "~" + format(endDate, "MM-dd") + "-" + "対キーワードURL週次検索結果"
-    );
+    resultSheet.setName(format(startDate, "yyyy-MM-dd") + "~" + format(endDate, "MM-dd") + "-" + "掲載順位結果");
 };
 const getStartEndDate = (periodSheet: GoogleAppsScript.Spreadsheet.Sheet): { startDate: Date; endDate: Date } => {
     const startDate = periodSheet.getRange("B4").getValue();
@@ -90,16 +81,9 @@ const getStartEndDate = (periodSheet: GoogleAppsScript.Spreadsheet.Sheet): { sta
     return { startDate, endDate };
 };
 
-const setHeader = (
-    keywordResultSheet: GoogleAppsScript.Spreadsheet.Sheet,
-    keywordUrlResultSheet: GoogleAppsScript.Spreadsheet.Sheet
-) => {
-    const header = [["キーワード", "記事URL", "クリック数", "インプレッション", "平均順位", "平均CTR"]];
-    keywordResultSheet.getRange(1, 1, 1, 1).setValues([["意図していない表示URL"]]);
-    keywordResultSheet.getRange(2, 1, 1, header[0].length).setValues(header);
-    keywordResultSheet.getRange(1, 1 + header[0].length + 1, 1, 1).setValues([["枝付きURL"]]);
-    keywordResultSheet.getRange(2, 1 + header[0].length + 1, 1, header[0].length).setValues(header);
-    keywordUrlResultSheet.getRange(1, 1, 1, header[0].length).setValues(header);
+const setHeader = (resultSheet: GoogleAppsScript.Spreadsheet.Sheet) => {
+    const header = [["キーワード", "記事URL", "タイプ", "クリック数", "インプレッション", "平均順位", "平均CTR"]];
+    resultSheet.getRange(1, 1, 1, header[0].length).setValues(header);
 };
 
 function getUrlsGroupedByKeyword(keywordUrlSheet: GoogleAppsScript.Spreadsheet.Sheet) {
@@ -164,20 +148,16 @@ const getDataFromSearchConsole = (keyword: string, startDate: Date, endDate: Dat
     return responseData;
 };
 
-const formatData = (
-    responseData: SearchConsoleResponse,
-    urls: string[] | undefined
-): { matched: (string | number)[][]; notMatched: (string | number)[][]; branched: (string | number)[][] } => {
-    const urlMatched = [];
-    const urlNotMatched = [];
-    const urlBranched = [];
+const formatData = (responseData: SearchConsoleResponse, urls: string[] | undefined): (string | number)[][] => {
+    const result = [];
 
     for (let i = 0; i < responseData["rows"].length; i++) {
         // URLが対策URLと一致するなら
         if (urls?.includes(responseData["rows"][i]["keys"][1])) {
-            urlMatched.push([
+            result.push([
                 responseData["rows"][i]["keys"][0],
                 responseData["rows"][i]["keys"][1],
+                "完全一致",
                 responseData["rows"][i]["clicks"],
                 responseData["rows"][i]["impressions"],
                 responseData["rows"][i]["position"],
@@ -186,9 +166,10 @@ const formatData = (
         }
         // 対策URLと一致しないかつ枝付きじゃないかつクリック数が1以上
         else if (!responseData["rows"][i]["keys"][1].match("#") && responseData["rows"][i]["clicks"] >= 1) {
-            urlNotMatched.push([
+            result.push([
                 responseData["rows"][i]["keys"][0],
                 responseData["rows"][i]["keys"][1],
+                "不一致",
                 responseData["rows"][i]["clicks"],
                 responseData["rows"][i]["impressions"],
                 responseData["rows"][i]["position"],
@@ -197,9 +178,10 @@ const formatData = (
         }
         // URLが枝付きかつクリックが1以上なら
         else if (responseData["rows"][i]["clicks"] >= 1) {
-            urlBranched.push([
+            result.push([
                 responseData["rows"][i]["keys"][0],
                 responseData["rows"][i]["keys"][1],
+                "アンカー付き",
                 responseData["rows"][i]["clicks"],
                 responseData["rows"][i]["impressions"],
                 responseData["rows"][i]["position"],
@@ -207,41 +189,14 @@ const formatData = (
             ]);
         }
     }
-    return { matched: urlMatched, notMatched: urlNotMatched, branched: urlBranched };
+    return result;
 };
 
-const writeInSpreadsheet = (
-    urlMatched: (string | number)[][],
-    urlNotMatched: (string | number)[][],
-    urlBranched: (string | number)[][],
-    keywordUrlResultSheet: GoogleAppsScript.Spreadsheet.Sheet,
-    keywordResultSheet: GoogleAppsScript.Spreadsheet.Sheet
-) => {
-    if (urlMatched.length >= 1) {
-        const urlMatchedColumnBVals = keywordUrlResultSheet.getRange("A:A").getValues();
-        const urlMatchedLastRow = urlMatchedColumnBVals.filter(String).length;
-        keywordUrlResultSheet
-            .getRange(urlMatchedLastRow + 1, 1, urlMatched.length, urlMatched[0].length)
-            .setValues(urlMatched);
-        keywordUrlResultSheet.getRange(urlMatchedLastRow + 1, 6, urlMatched.length).setNumberFormat("0.00%");
-    }
-    console.log(urlNotMatched);
-    if (urlNotMatched.length >= 1) {
-        const urlNotMatchedColumnBVals = keywordResultSheet.getRange("A:A").getValues();
-        const urlNotMatchedLastRow = urlNotMatchedColumnBVals.filter(String).length;
-        keywordResultSheet
-            .getRange(urlNotMatchedLastRow + 1, 1, urlNotMatched.length, urlNotMatched[0].length)
-            .setValues(urlNotMatched);
-        keywordResultSheet.getRange(urlNotMatchedLastRow + 1, 6, urlNotMatched.length).setNumberFormat("0.00%");
-    }
-
-    if (urlBranched.length >= 1) {
-        console.log("branched", urlBranched);
-        const urlBranchedColumnBVals = keywordResultSheet.getRange("H:H").getValues();
-        const urlBranchedLastRow = urlBranchedColumnBVals.filter(String).length;
-        keywordResultSheet
-            .getRange(urlBranchedLastRow + 1, 8, urlBranched.length, urlBranched[0].length)
-            .setValues(urlBranched);
-        keywordResultSheet.getRange(urlBranchedLastRow + 1, 13, urlBranched.length).setNumberFormat("0.00%");
+const writeInSpreadsheet = (result: (string | number)[][], resultSheet: GoogleAppsScript.Spreadsheet.Sheet) => {
+    if (result.length >= 1) {
+        const resultColumnBVals = resultSheet.getRange("A:A").getValues();
+        const resultLastRow = resultColumnBVals.filter(String).length;
+        resultSheet.getRange(resultLastRow + 1, 1, result.length, result[0].length).setValues(result);
+        resultSheet.getRange(resultLastRow + 1, 7, result.length).setNumberFormat("0.00%");
     }
 };
