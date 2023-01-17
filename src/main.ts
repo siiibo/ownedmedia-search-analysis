@@ -149,46 +149,43 @@ const getDataFromSearchConsole = (keyword: string, startDate: Date, endDate: Dat
 };
 
 const formatData = (responseData: SearchConsoleResponse, urls: string[] | undefined): (string | number)[][] => {
-    const result = [];
+    const withAnchor = responseData["rows"].filter((row) => row["keys"][1].match("#") && row["clicks"] >= 1);
+    const withoutAnchor = responseData["rows"].filter((row) => !row["keys"][1].match("#"));
+    const matchedWithoutAnchor = withoutAnchor.filter((row) => urls?.includes(row["keys"][1]));
+    const notMatchedWithoutAnchor = withoutAnchor.filter(
+        (row) => !urls?.includes(row["keys"][1]) && row["clicks"] >= 1
+    );
+    const resultWithAnchor = withAnchor.map((row) => [
+        row["keys"][0],
+        row["keys"][1],
+        "アンカー付き",
+        row["clicks"],
+        row["impressions"],
+        row["position"],
+        row["ctr"],
+    ]);
 
-    for (let i = 0; i < responseData["rows"].length; i++) {
-        // URLが対策URLと一致するなら
-        if (urls?.includes(responseData["rows"][i]["keys"][1])) {
-            result.push([
-                responseData["rows"][i]["keys"][0],
-                responseData["rows"][i]["keys"][1],
-                "完全一致",
-                responseData["rows"][i]["clicks"],
-                responseData["rows"][i]["impressions"],
-                responseData["rows"][i]["position"],
-                responseData["rows"][i]["ctr"],
-            ]);
-        }
-        // 対策URLと一致しないかつ枝付きじゃないかつクリック数が1以上
-        else if (!responseData["rows"][i]["keys"][1].match("#") && responseData["rows"][i]["clicks"] >= 1) {
-            result.push([
-                responseData["rows"][i]["keys"][0],
-                responseData["rows"][i]["keys"][1],
-                "不一致",
-                responseData["rows"][i]["clicks"],
-                responseData["rows"][i]["impressions"],
-                responseData["rows"][i]["position"],
-                responseData["rows"][i]["ctr"],
-            ]);
-        }
-        // URLが枝付きかつクリックが1以上なら
-        else if (responseData["rows"][i]["clicks"] >= 1) {
-            result.push([
-                responseData["rows"][i]["keys"][0],
-                responseData["rows"][i]["keys"][1],
-                "アンカー付き",
-                responseData["rows"][i]["clicks"],
-                responseData["rows"][i]["impressions"],
-                responseData["rows"][i]["position"],
-                responseData["rows"][i]["ctr"],
-            ]);
-        }
-    }
+    const resultMatchedWithoutAnchor = matchedWithoutAnchor.map((row) => [
+        row["keys"][0],
+        row["keys"][1],
+        "完全一致",
+        row["clicks"],
+        row["impressions"],
+        row["position"],
+        row["ctr"],
+    ]);
+
+    const resultNotMatchedWithoutAnchor = notMatchedWithoutAnchor.map((row) => [
+        row["keys"][0],
+        row["keys"][1],
+        "不一致",
+        row["clicks"],
+        row["impressions"],
+        row["position"],
+        row["ctr"],
+    ]);
+
+    const result = resultMatchedWithoutAnchor.concat(resultNotMatchedWithoutAnchor).concat(resultWithAnchor);
     return result;
 };
 
