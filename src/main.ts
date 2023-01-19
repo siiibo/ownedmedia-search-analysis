@@ -57,25 +57,19 @@ export const main = () => {
 
     setHeader(resultSheet);
 
-    for (const [keyword, values] of Object.entries(keywordUrl)) {
-        if (values == undefined) {
-            continue;
-        }
-        const urls = values.map((value) => {
-            return value.url;
+    const results: (string | number)[][][] = [];
+    Object.entries(keywordUrl)
+        .filter((kv): kv is [string, KeywordUrl[]] => kv[1] != undefined)
+        .forEach(([keyword, values]) => {
+            const urls = values.map((value) => {
+                return value.url;
+            });
+            const response = getDataFromSearchConsole(keyword, startDate, endDate);
+            const result: (string | number)[][] = formatData(response, urls);
+            results.push(result);
         });
-        const responseData = getDataFromSearchConsole(keyword, startDate, endDate);
 
-        if (!(typeof responseData["rows"] === "undefined" || responseData["rows"].length === 0)) {
-            if (keywordUrl[keyword] != undefined) {
-                const result = formatData(responseData, urls);
-
-                writeInSpreadsheet(result, resultSheet);
-            }
-        } else {
-            console.log("該当するデータがありませんでした。");
-        }
-    }
+    results.forEach((result) => writeInSpreadsheet(result, resultSheet));
 };
 const getStartEndDate = (periodSheet: GoogleAppsScript.Spreadsheet.Sheet): { startDate: Date; endDate: Date } => {
     const startDate = periodSheet.getRange("B4").getValue();
