@@ -64,8 +64,8 @@ export const main = () => {
             const urls = values.map((value) => {
                 return value.url;
             });
-            const response = getDataFromSearchConsole(keyword, startDate, endDate);
-            const result: (string | number)[][] = formatData(response, urls);
+            const responseData = getDataFromSearchConsole(keyword, startDate, endDate);
+            const result: (string | number)[][] = formatData(responseData, urls);
             results.push(result);
         });
 
