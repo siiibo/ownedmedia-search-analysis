@@ -144,7 +144,7 @@ const getDataFromSearchConsole = (keyword: string, startDate: Date, endDate: Dat
     return responseData;
 };
 
-const formatData = (responseData: SearchConsoleResponse, urls: string[] | undefined): (string | number)[][] => {
+const formatData = (responseData: SearchConsoleResponse, urls: string[]): (string | number)[][] => {
     const withAnchor = responseData["rows"].filter((row) => row["keys"][1].match("#") && row["clicks"] >= 1);
     const withoutAnchor = responseData["rows"].filter((row) => !row["keys"][1].match("#"));
     const matchedWithoutAnchor = withoutAnchor.filter((row) => urls?.includes(row["keys"][1]));
