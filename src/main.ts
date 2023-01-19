@@ -145,15 +145,20 @@ const getDataFromSearchConsole = (keyword: string, startDate: Date, endDate: Dat
 };
 
 const formatData = (responseData: SearchConsoleResponse, urls: string[]): (string | number)[][] => {
-    const withAnchor = responseData["rows"].filter((row) => row["keys"][1].match("#") && row["clicks"] >= 1);
-    const withoutAnchor = responseData["rows"].filter((row) => !row["keys"][1].match("#"));
-    const matchedWithoutAnchor = withoutAnchor.filter((row) => urls?.includes(row["keys"][1]));
-    const notMatchedWithoutAnchor = withoutAnchor.filter(
-        (row) => !urls?.includes(row["keys"][1]) && row["clicks"] >= 1
-    );
+    const results = responseData["rows"].map(({ keys, ...rest }) => {
+        return {
+            query: keys[0],
+            page: keys[1],
+            ...rest,
+        };
+    });
+    const withAnchor = results.filter((row) => row["page"].includes("#") && row["clicks"] >= 1);
+    const withoutAnchor = results.filter((row) => !row["page"].includes("#"));
+    const matchedWithoutAnchor = withoutAnchor.filter((row) => urls?.includes(row["page"]));
+    const notMatchedWithoutAnchor = withoutAnchor.filter((row) => !urls?.includes(row["page"]) && row["clicks"] >= 1);
     const resultWithAnchor = withAnchor.map((row) => [
-        row["keys"][0],
-        row["keys"][1],
+        row["query"],
+        row["page"],
         "アンカー付き",
         row["clicks"],
         row["impressions"],
@@ -162,8 +167,8 @@ const formatData = (responseData: SearchConsoleResponse, urls: string[]): (strin
     ]);
 
     const resultMatchedWithoutAnchor = matchedWithoutAnchor.map((row) => [
-        row["keys"][0],
-        row["keys"][1],
+        row["query"],
+        row["page"],
         "完全一致",
         row["clicks"],
         row["impressions"],
@@ -172,8 +177,8 @@ const formatData = (responseData: SearchConsoleResponse, urls: string[]): (strin
     ]);
 
     const resultNotMatchedWithoutAnchor = notMatchedWithoutAnchor.map((row) => [
-        row["keys"][0],
-        row["keys"][1],
+        row["query"],
+        row["page"],
         "不一致",
         row["clicks"],
         row["impressions"],
