@@ -50,7 +50,10 @@ export const main = () => {
 
     const keywordUrl = getUrlsGroupedByKeyword(keywordUrlSheet);
 
-    const resultSheet = spreadsheet.insertSheet(3);
+    const resultSheet = spreadsheet.insertSheet(
+        `${format(startDate, "yyyy-MM-dd")}~${format(endDate, "MM-dd")}-掲載順位結果`,
+        3
+    );
 
     setHeader(resultSheet);
 
@@ -73,7 +76,6 @@ export const main = () => {
             console.log("該当するデータがありませんでした。");
         }
     }
-    resultSheet.setName(format(startDate, "yyyy-MM-dd") + "~" + format(endDate, "MM-dd") + "-" + "掲載順位結果");
 };
 const getStartEndDate = (periodSheet: GoogleAppsScript.Spreadsheet.Sheet): { startDate: Date; endDate: Date } => {
     const startDate = periodSheet.getRange("B4").getValue();
