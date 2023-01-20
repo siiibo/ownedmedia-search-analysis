@@ -57,20 +57,25 @@ export const main = () => {
 
     setHeader(resultSheet);
 
-    const results: (string | number)[][][] = [];
-    Object.entries(keywordUrl)
-        .filter((kv): kv is [string, KeywordUrl[]] => kv[1] != undefined)
-        .forEach(([keyword, values]) => {
-            const urls = values.map((value) => {
-                return value.url;
-            });
-            const responseData = getDataFromSearchConsole(keyword, startDate, endDate);
-            const result: (string | number)[][] = formatData(responseData, urls);
-            results.push(result);
-        });
+    const keywordUrlEntries = Object.entries(keywordUrl).filter(
+        (kv): kv is [string, KeywordUrl[]] => kv[1] != undefined
+    );
 
-    results.forEach((result) => writeInSpreadsheet(result, resultSheet));
+    const searchConsoleResponses = keywordUrlEntries.map(([keyword, keywordUrls]) => {
+        const searchConsoleResponse = getDataFromSearchConsole(keyword, startDate, endDate);
+        return { searchConsoleResponse, keyword, keywordUrls };
+    });
+
+    const formattedDataList = searchConsoleResponses.map(({ searchConsoleResponse, keywordUrls }) => {
+        const urls = keywordUrls.map((keywordUrl) => {
+            return keywordUrl.url;
+        });
+        return formatData(searchConsoleResponse, urls);
+    });
+
+    formattedDataList.forEach((data) => writeInSpreadsheet(data, resultSheet));
 };
+
 const getStartEndDate = (periodSheet: GoogleAppsScript.Spreadsheet.Sheet): { startDate: Date; endDate: Date } => {
     const startDate = periodSheet.getRange("B4").getValue();
     const endDate = endOfDay(periodSheet.getRange("C4").getValue());
