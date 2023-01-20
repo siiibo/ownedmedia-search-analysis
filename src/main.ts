@@ -17,7 +17,7 @@ type SearchConsoleResponse = {
     }[];
 };
 
-type FormattedData = {
+type FormattedResponse = {
     clicks: number;
     ctr: number;
     impressions: number;
@@ -161,8 +161,12 @@ const getDataFromSearchConsole = (keyword: string, startDate: Date, endDate: Dat
 const formatData = (
     response: SearchConsoleResponse,
     urls: string[]
-): { withAnchor: FormattedData; matchedWithoutAnchor: FormattedData; notMatchedWithoutAnchor: FormattedData } => {
-    const results = response["rows"].map(({ keys, ...rest }) => {
+): {
+    withAnchor: FormattedResponse;
+    matchedWithoutAnchor: FormattedResponse;
+    notMatchedWithoutAnchor: FormattedResponse;
+} => {
+    const formattedResponse = response["rows"].map(({ keys, ...rest }) => {
         return {
             query: keys[0],
             page: keys[1],
@@ -174,8 +178,8 @@ const formatData = (
      *
      * 参考: https://github.com/siiibo/ownedmedia-search-analysis/pull/4#discussion_r1080962946
      */
-    const withAnchor = results.filter((row) => row["page"].includes("#") && row["clicks"] >= 1);
-    const withoutAnchor = results.filter((row) => !row["page"].includes("#"));
+    const withAnchor = formattedResponse.filter((row) => row["page"].includes("#") && row["clicks"] >= 1);
+    const withoutAnchor = formattedResponse.filter((row) => !row["page"].includes("#"));
     const matchedWithoutAnchor = withoutAnchor.filter((row) => urls.includes(row["page"]));
     const notMatchedWithoutAnchor = withoutAnchor.filter((row) => !urls.includes(row["page"]) && row["clicks"] >= 1);
 
@@ -183,7 +187,11 @@ const formatData = (
 };
 
 const writeInSpreadsheet = (
-    data: { withAnchor: FormattedData; matchedWithoutAnchor: FormattedData; notMatchedWithoutAnchor: FormattedData },
+    data: {
+        withAnchor: FormattedResponse;
+        matchedWithoutAnchor: FormattedResponse;
+        notMatchedWithoutAnchor: FormattedResponse;
+    },
     resultSheet: GoogleAppsScript.Spreadsheet.Sheet
 ) => {
     const resultWithAnchor = data.withAnchor.map((row) => [
