@@ -64,8 +64,6 @@ export const main = () => {
         3
     );
 
-    setHeader(resultSheet);
-
     const keywordUrlEntries = Object.entries(keywordUrl).filter(
         (kv): kv is [string, KeywordUrl[]] => kv[1] != undefined
     );
@@ -194,6 +192,8 @@ const writeInSpreadsheet = (
     }[],
     resultSheet: GoogleAppsScript.Spreadsheet.Sheet
 ) => {
+    setHeader(resultSheet);
+
     const results = formattedDataList.flatMap((data) => {
         const resultWithAnchor = data.withAnchor.map((row) => [
             row["query"],
