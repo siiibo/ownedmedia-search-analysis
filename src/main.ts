@@ -62,15 +62,15 @@ export const main = () => {
     );
 
     const searchConsoleResponses = keywordUrlEntries.map(([keyword, keywordUrls]) => {
-        const searchConsoleResponse = getDataFromSearchConsole(keyword, startDate, endDate);
-        return { searchConsoleResponse, keyword, keywordUrls };
+        const response = getDataFromSearchConsole(keyword, startDate, endDate);
+        return { response, keyword, keywordUrls };
     });
 
-    const formattedDataList = searchConsoleResponses.map(({ searchConsoleResponse, keywordUrls }) => {
+    const formattedDataList = searchConsoleResponses.map(({ response, keywordUrls }) => {
         const urls = keywordUrls.map((keywordUrl) => {
             return keywordUrl.url;
         });
-        return formatData(searchConsoleResponse, urls);
+        return formatData(response, urls);
     });
 
     formattedDataList.forEach((data) => writeInSpreadsheet(data, resultSheet));
@@ -144,13 +144,13 @@ const getDataFromSearchConsole = (keyword: string, startDate: Date, endDate: Dat
         contentType: "application/json",
     };
 
-    const response = UrlFetchApp.fetch(apiUrl, options);
-    const responseData: SearchConsoleResponse = JSON.parse(response.getContentText());
-    return responseData;
+    const httpResponse = UrlFetchApp.fetch(apiUrl, options);
+    const response: SearchConsoleResponse = JSON.parse(httpResponse.getContentText());
+    return response;
 };
 
-const formatData = (responseData: SearchConsoleResponse, urls: string[]): (string | number)[][] => {
-    const results = responseData["rows"].map(({ keys, ...rest }) => {
+const formatData = (response: SearchConsoleResponse, urls: string[]): (string | number)[][] => {
+    const results = response["rows"].map(({ keys, ...rest }) => {
         return {
             query: keys[0],
             page: keys[1],
