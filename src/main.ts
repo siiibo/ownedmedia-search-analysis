@@ -17,6 +17,15 @@ type SearchConsoleResponse = {
     }[];
 };
 
+type FormatData = {
+    clicks: number;
+    ctr: number;
+    impressions: number;
+    position: number;
+    query: string;
+    page: string;
+}[];
+
 export const init = () => {
     const spreadsheet = getSpreadsheet();
     ScriptApp.newTrigger(createOnOpen.name).forSpreadsheet(spreadsheet).onOpen().create();
@@ -149,7 +158,10 @@ const getDataFromSearchConsole = (keyword: string, startDate: Date, endDate: Dat
     return response;
 };
 
-const formatData = (response: SearchConsoleResponse, urls: string[]): (string | number)[][] => {
+const formatData = (
+    response: SearchConsoleResponse,
+    urls: string[]
+): { withAnchor: FormatData; matchedWithoutAnchor: FormatData; notMatchedWithoutAnchor: FormatData } => {
     const results = response["rows"].map(({ keys, ...rest }) => {
         return {
             query: keys[0],
@@ -166,7 +178,15 @@ const formatData = (response: SearchConsoleResponse, urls: string[]): (string | 
     const withoutAnchor = results.filter((row) => !row["page"].includes("#"));
     const matchedWithoutAnchor = withoutAnchor.filter((row) => urls.includes(row["page"]));
     const notMatchedWithoutAnchor = withoutAnchor.filter((row) => !urls.includes(row["page"]) && row["clicks"] >= 1);
-    const resultWithAnchor = withAnchor.map((row) => [
+
+    return { withAnchor, matchedWithoutAnchor, notMatchedWithoutAnchor };
+};
+
+const writeInSpreadsheet = (
+    data: { withAnchor: FormatData; matchedWithoutAnchor: FormatData; notMatchedWithoutAnchor: FormatData },
+    resultSheet: GoogleAppsScript.Spreadsheet.Sheet
+) => {
+    const resultWithAnchor = data.withAnchor.map((row) => [
         row["query"],
         row["page"],
         "アンカー付き",
@@ -176,7 +196,7 @@ const formatData = (response: SearchConsoleResponse, urls: string[]): (string | 
         row["ctr"],
     ]);
 
-    const resultMatchedWithoutAnchor = matchedWithoutAnchor.map((row) => [
+    const resultMatchedWithoutAnchor = data.matchedWithoutAnchor.map((row) => [
         row["query"],
         row["page"],
         "完全一致",
@@ -186,7 +206,7 @@ const formatData = (response: SearchConsoleResponse, urls: string[]): (string | 
         row["ctr"],
     ]);
 
-    const resultNotMatchedWithoutAnchor = notMatchedWithoutAnchor.map((row) => [
+    const resultNotMatchedWithoutAnchor = data.notMatchedWithoutAnchor.map((row) => [
         row["query"],
         row["page"],
         "不一致",
@@ -197,10 +217,7 @@ const formatData = (response: SearchConsoleResponse, urls: string[]): (string | 
     ]);
 
     const result = resultMatchedWithoutAnchor.concat(resultNotMatchedWithoutAnchor).concat(resultWithAnchor);
-    return result;
-};
 
-const writeInSpreadsheet = (result: (string | number)[][], resultSheet: GoogleAppsScript.Spreadsheet.Sheet) => {
     if (result.length >= 1) {
         const resultColumnBVals = resultSheet.getRange("A:A").getValues();
         const resultLastRow = resultColumnBVals.filter(String).length;
