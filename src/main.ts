@@ -225,7 +225,7 @@ const writeInSpreadsheet = (
             row["ctr"],
         ]);
 
-        return resultMatchedWithoutAnchor.concat(resultNotMatchedWithoutAnchor).concat(resultWithAnchor);
+        return [...resultMatchedWithoutAnchor, ...resultNotMatchedWithoutAnchor, ...resultWithAnchor];
     });
 
     const resultsRowNum = results.length;
