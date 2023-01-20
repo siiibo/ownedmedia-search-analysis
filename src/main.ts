@@ -82,7 +82,7 @@ export const main = () => {
         return formatData(response, urls);
     });
 
-    formattedDataList.forEach((data) => writeInSpreadsheet(data, resultSheet));
+    writeInSpreadsheet(formattedDataList, resultSheet);
 };
 
 const getStartEndDate = (periodSheet: GoogleAppsScript.Spreadsheet.Sheet): { startDate: Date; endDate: Date } => {
@@ -187,44 +187,46 @@ const formatData = (
 };
 
 const writeInSpreadsheet = (
-    data: {
+    formattedDataList: {
         withAnchor: FormattedResponse;
         matchedWithoutAnchor: FormattedResponse;
         notMatchedWithoutAnchor: FormattedResponse;
-    },
+    }[],
     resultSheet: GoogleAppsScript.Spreadsheet.Sheet
 ) => {
-    const resultWithAnchor = data.withAnchor.map((row) => [
-        row["query"],
-        row["page"],
-        "アンカー付き",
-        row["clicks"],
-        row["impressions"],
-        row["position"],
-        row["ctr"],
-    ]);
+    const results = formattedDataList.flatMap((data) => {
+        const resultWithAnchor = data.withAnchor.map((row) => [
+            row["query"],
+            row["page"],
+            "アンカー付き",
+            row["clicks"],
+            row["impressions"],
+            row["position"],
+            row["ctr"],
+        ]);
 
-    const resultMatchedWithoutAnchor = data.matchedWithoutAnchor.map((row) => [
-        row["query"],
-        row["page"],
-        "完全一致",
-        row["clicks"],
-        row["impressions"],
-        row["position"],
-        row["ctr"],
-    ]);
+        const resultMatchedWithoutAnchor = data.matchedWithoutAnchor.map((row) => [
+            row["query"],
+            row["page"],
+            "完全一致",
+            row["clicks"],
+            row["impressions"],
+            row["position"],
+            row["ctr"],
+        ]);
 
-    const resultNotMatchedWithoutAnchor = data.notMatchedWithoutAnchor.map((row) => [
-        row["query"],
-        row["page"],
-        "不一致",
-        row["clicks"],
-        row["impressions"],
-        row["position"],
-        row["ctr"],
-    ]);
+        const resultNotMatchedWithoutAnchor = data.notMatchedWithoutAnchor.map((row) => [
+            row["query"],
+            row["page"],
+            "不一致",
+            row["clicks"],
+            row["impressions"],
+            row["position"],
+            row["ctr"],
+        ]);
 
-    const results = resultMatchedWithoutAnchor.concat(resultNotMatchedWithoutAnchor).concat(resultWithAnchor);
+        return resultMatchedWithoutAnchor.concat(resultNotMatchedWithoutAnchor).concat(resultWithAnchor);
+    });
 
     const resultsRowNum = results.length;
     const resultsColumnNum = results[0].length;
