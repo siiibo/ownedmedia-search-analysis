@@ -164,8 +164,8 @@ const formatData = (response: SearchConsoleResponse, urls: string[]): (string | 
      */
     const withAnchor = results.filter((row) => row["page"].includes("#") && row["clicks"] >= 1);
     const withoutAnchor = results.filter((row) => !row["page"].includes("#"));
-    const matchedWithoutAnchor = withoutAnchor.filter((row) => urls?.includes(row["page"]));
-    const notMatchedWithoutAnchor = withoutAnchor.filter((row) => !urls?.includes(row["page"]) && row["clicks"] >= 1);
+    const matchedWithoutAnchor = withoutAnchor.filter((row) => urls.includes(row["page"]));
+    const notMatchedWithoutAnchor = withoutAnchor.filter((row) => !urls.includes(row["page"]) && row["clicks"] >= 1);
     const resultWithAnchor = withAnchor.map((row) => [
         row["query"],
         row["page"],
