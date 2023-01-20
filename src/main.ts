@@ -157,6 +157,11 @@ const formatData = (response: SearchConsoleResponse, urls: string[]): (string | 
             ...rest,
         };
     });
+    /**
+     * アンカー付き, 不一致はさらに「クリック数1以上のみ」で絞り込みを行う. 完全一致は行わない.
+     *
+     * 参考: https://github.com/siiibo/ownedmedia-search-analysis/pull/4#discussion_r1080962946
+     */
     const withAnchor = results.filter((row) => row["page"].includes("#") && row["clicks"] >= 1);
     const withoutAnchor = results.filter((row) => !row["page"].includes("#"));
     const matchedWithoutAnchor = withoutAnchor.filter((row) => urls?.includes(row["page"]));
