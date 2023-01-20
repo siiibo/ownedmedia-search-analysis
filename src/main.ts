@@ -17,7 +17,7 @@ type SearchConsoleResponse = {
     }[];
 };
 
-type FormatData = {
+type FormattedData = {
     clicks: number;
     ctr: number;
     impressions: number;
@@ -161,7 +161,7 @@ const getDataFromSearchConsole = (keyword: string, startDate: Date, endDate: Dat
 const formatData = (
     response: SearchConsoleResponse,
     urls: string[]
-): { withAnchor: FormatData; matchedWithoutAnchor: FormatData; notMatchedWithoutAnchor: FormatData } => {
+): { withAnchor: FormattedData; matchedWithoutAnchor: FormattedData; notMatchedWithoutAnchor: FormattedData } => {
     const results = response["rows"].map(({ keys, ...rest }) => {
         return {
             query: keys[0],
@@ -183,7 +183,7 @@ const formatData = (
 };
 
 const writeInSpreadsheet = (
-    data: { withAnchor: FormatData; matchedWithoutAnchor: FormatData; notMatchedWithoutAnchor: FormatData },
+    data: { withAnchor: FormattedData; matchedWithoutAnchor: FormattedData; notMatchedWithoutAnchor: FormattedData },
     resultSheet: GoogleAppsScript.Spreadsheet.Sheet
 ) => {
     const resultWithAnchor = data.withAnchor.map((row) => [
