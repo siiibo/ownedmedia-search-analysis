@@ -224,12 +224,14 @@ const writeInSpreadsheet = (
         row["ctr"],
     ]);
 
-    const result = resultMatchedWithoutAnchor.concat(resultNotMatchedWithoutAnchor).concat(resultWithAnchor);
+    const results = resultMatchedWithoutAnchor.concat(resultNotMatchedWithoutAnchor).concat(resultWithAnchor);
 
-    if (result.length >= 1) {
-        const resultColumnBVals = resultSheet.getRange("A:A").getValues();
-        const resultLastRow = resultColumnBVals.filter(String).length;
-        resultSheet.getRange(resultLastRow + 1, 1, result.length, result[0].length).setValues(result);
-        resultSheet.getRange(resultLastRow + 1, 7, result.length).setNumberFormat("0.00%");
+    const resultsRowNum = results.length;
+    const resultsColumnNum = results[0].length;
+
+    if (resultsRowNum >= 1) {
+        const lastRow = resultSheet.getLastRow();
+        resultSheet.getRange(lastRow + 1, 1, resultsRowNum, resultsColumnNum).setValues(results);
+        resultSheet.getRange(lastRow + 1, 7, resultsRowNum, 1).setNumberFormat("0.00%");
     }
 };
