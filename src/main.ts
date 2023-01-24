@@ -68,10 +68,18 @@ export const main = () => {
         (kv): kv is [string, KeywordUrl[]] => kv[1] != undefined
     );
 
-    const searchConsoleResponses = keywordUrlEntries.map(([keyword, keywordUrls]) => {
-        const response = getDataFromSearchConsole(keyword, startDate, endDate);
-        return { response, keyword, keywordUrls };
-    });
+    const searchConsoleResponses = keywordUrlEntries
+        .map(([keyword, keywordUrls]) => {
+            const response = getDataFromSearchConsole(keyword, startDate, endDate);
+            return { response, keyword, keywordUrls };
+        })
+        .filter(
+            (searchConsoleResponse) =>
+                !(
+                    typeof searchConsoleResponse.response["rows"] === "undefined" ||
+                    searchConsoleResponse.response["rows"].length === 0
+                )
+        );
 
     const responsesGroupedByPageAttribute = searchConsoleResponses.map(({ response, keywordUrls }) => {
         const urls = keywordUrls.map((keywordUrl) => {
@@ -226,7 +234,7 @@ const writeInSpreadsheet = (
     });
 
     if (contents.length >= 1) {
-        resultSheet.getRange(1, 1, contents.length + 1, header.length).setValues([...header, ...contents]);
+        resultSheet.getRange(1, 1, contents.length + 1, header[0].length).setValues([...header, ...contents]);
         resultSheet.getRange(2, 7, contents.length, 1).setNumberFormat("0.00%");
     }
 };
