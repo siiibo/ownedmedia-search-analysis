@@ -89,11 +89,6 @@ const getStartEndDate = (periodSheet: GoogleAppsScript.Spreadsheet.Sheet): { sta
     return { startDate, endDate };
 };
 
-const setHeader = (resultSheet: GoogleAppsScript.Spreadsheet.Sheet) => {
-    const header = [["キーワード", "記事URL", "タイプ", "クリック数", "インプレッション", "平均順位", "平均CTR"]];
-    resultSheet.getRange(1, 1, 1, header[0].length).setValues(header);
-};
-
 function getUrlsGroupedByKeyword(keywordUrlSheet: GoogleAppsScript.Spreadsheet.Sheet) {
     const [_sheetHeader, ...sheetValues] = keywordUrlSheet.getDataRange().getValues();
     const keywordUrls: KeywordUrl[] = sheetValues.map((row) => {
@@ -194,7 +189,7 @@ const writeInSpreadsheet = (
     }[],
     resultSheet: GoogleAppsScript.Spreadsheet.Sheet
 ) => {
-    setHeader(resultSheet);
+    const header = [["キーワード", "記事URL", "タイプ", "クリック数", "インプレッション", "平均順位", "平均CTR"]];
 
     const results = formattedDataList.flatMap((data) => {
         const resultWithAnchor = data.withAnchor.map((row) => [
@@ -234,8 +229,7 @@ const writeInSpreadsheet = (
     const resultsColumnNum = results[0].length;
 
     if (resultsRowNum >= 1) {
-        const lastRow = resultSheet.getLastRow();
-        resultSheet.getRange(lastRow + 1, 1, resultsRowNum, resultsColumnNum).setValues(results);
-        resultSheet.getRange(lastRow + 1, 7, resultsRowNum, 1).setNumberFormat("0.00%");
+        resultSheet.getRange(1, 1, resultsRowNum, resultsColumnNum).setValues([...header, ...results]);
+        resultSheet.getRange(2, 7, resultsRowNum, 1).setNumberFormat("0.00%");
     }
 };
