@@ -73,14 +73,14 @@ export const main = () => {
         return { response, keyword, keywordUrls };
     });
 
-    const searchPerformances = searchConsoleResponses.map(({ response, keywordUrls }) => {
+    const responsesGroupedByPageAttribute = searchConsoleResponses.map(({ response, keywordUrls }) => {
         const urls = keywordUrls.map((keywordUrl) => {
             return keywordUrl.url;
         });
-        return formatData(response, urls);
+        return getResponseGroupedByPageAttribute(response, urls);
     });
 
-    writeInSpreadsheet(searchPerformances, resultSheet);
+    writeInSpreadsheet(responsesGroupedByPageAttribute, resultSheet);
 };
 
 const getStartEndDate = (periodSheet: GoogleAppsScript.Spreadsheet.Sheet): { startDate: Date; endDate: Date } => {
@@ -151,7 +151,7 @@ const getDataFromSearchConsole = (keyword: string, startDate: Date, endDate: Dat
     return response;
 };
 
-const formatData = (
+const getResponseGroupedByPageAttribute = (
     response: SearchConsoleResponse,
     urls: string[]
 ): {
@@ -182,7 +182,7 @@ const formatData = (
 };
 
 const writeInSpreadsheet = (
-    searchPerformances: {
+    responsesGroupedByPageAttribute: {
         withAnchor: SearchPerformanceGroupedByQueryAndPage;
         matchedWithoutAnchor: SearchPerformanceGroupedByQueryAndPage;
         notMatchedWithoutAnchor: SearchPerformanceGroupedByQueryAndPage;
@@ -191,7 +191,7 @@ const writeInSpreadsheet = (
 ) => {
     const header = [["キーワード", "記事URL", "タイプ", "クリック数", "インプレッション", "平均順位", "平均CTR"]];
 
-    const results = searchPerformances.flatMap((data) => {
+    const results = responsesGroupedByPageAttribute.flatMap((data) => {
         const resultWithAnchor = data.withAnchor.map((row) => [
             row["query"],
             row["page"],
