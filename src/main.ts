@@ -17,7 +17,7 @@ type SearchConsoleResponse = {
     }[];
 };
 
-type FormattedResponse = {
+type SearchPerformanceGroupedByQueryAndPage = {
     clicks: number;
     ctr: number;
     impressions: number;
@@ -160,11 +160,11 @@ const formatData = (
     response: SearchConsoleResponse,
     urls: string[]
 ): {
-    withAnchor: FormattedResponse;
-    matchedWithoutAnchor: FormattedResponse;
-    notMatchedWithoutAnchor: FormattedResponse;
+    withAnchor: SearchPerformanceGroupedByQueryAndPage;
+    matchedWithoutAnchor: SearchPerformanceGroupedByQueryAndPage;
+    notMatchedWithoutAnchor: SearchPerformanceGroupedByQueryAndPage;
 } => {
-    const formattedResponse = response["rows"].map(({ keys, ...rest }) => {
+    const searchPerformanceGroupedByQueryAndPage = response["rows"].map(({ keys, ...rest }) => {
         return {
             query: keys[0],
             page: keys[1],
@@ -176,8 +176,10 @@ const formatData = (
      *
      * 参考: https://github.com/siiibo/ownedmedia-search-analysis/pull/4#discussion_r1080962946
      */
-    const withAnchor = formattedResponse.filter((row) => row["page"].includes("#") && row["clicks"] >= 1);
-    const withoutAnchor = formattedResponse.filter((row) => !row["page"].includes("#"));
+    const withAnchor = searchPerformanceGroupedByQueryAndPage.filter(
+        (row) => row["page"].includes("#") && row["clicks"] >= 1
+    );
+    const withoutAnchor = searchPerformanceGroupedByQueryAndPage.filter((row) => !row["page"].includes("#"));
     const matchedWithoutAnchor = withoutAnchor.filter((row) => urls.includes(row["page"]));
     const notMatchedWithoutAnchor = withoutAnchor.filter((row) => !urls.includes(row["page"]) && row["clicks"] >= 1);
 
@@ -186,9 +188,9 @@ const formatData = (
 
 const writeInSpreadsheet = (
     formattedDataList: {
-        withAnchor: FormattedResponse;
-        matchedWithoutAnchor: FormattedResponse;
-        notMatchedWithoutAnchor: FormattedResponse;
+        withAnchor: SearchPerformanceGroupedByQueryAndPage;
+        matchedWithoutAnchor: SearchPerformanceGroupedByQueryAndPage;
+        notMatchedWithoutAnchor: SearchPerformanceGroupedByQueryAndPage;
     }[],
     resultSheet: GoogleAppsScript.Spreadsheet.Sheet
 ) => {
