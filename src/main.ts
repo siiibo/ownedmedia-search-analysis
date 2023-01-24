@@ -8,13 +8,15 @@ type KeywordUrl = {
 
 type SearchConsoleResponse = {
     responseAggregationType: string;
-    rows: {
-        clicks: number;
-        ctr: number;
-        impressions: number;
-        keys: string[];
-        position: number;
-    }[];
+    rows:
+        | {
+              clicks: number;
+              ctr: number;
+              impressions: number;
+              keys: string[];
+              position: number;
+          }[]
+        | undefined;
 };
 
 type SearchPerformanceGroupedByQueryAndPage = {
@@ -234,7 +236,7 @@ const writeInSpreadsheet = (
     });
 
     if (contents.length >= 1) {
-        resultSheet.getRange(1, 1, contents.length + 1, header.length).setValues([...[header], ...contents]);
+        resultSheet.getRange(1, 1, contents.length + 1, header.length).setValues([header, ...contents]);
         resultSheet.getRange(2, 7, contents.length, 1).setNumberFormat("0.00%");
     }
 };
