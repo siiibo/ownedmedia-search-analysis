@@ -73,14 +73,14 @@ export const main = () => {
         return { response, keyword, keywordUrls };
     });
 
-    const formattedDataList = searchConsoleResponses.map(({ response, keywordUrls }) => {
+    const searchPerformances = searchConsoleResponses.map(({ response, keywordUrls }) => {
         const urls = keywordUrls.map((keywordUrl) => {
             return keywordUrl.url;
         });
         return formatData(response, urls);
     });
 
-    writeInSpreadsheet(formattedDataList, resultSheet);
+    writeInSpreadsheet(searchPerformances, resultSheet);
 };
 
 const getStartEndDate = (periodSheet: GoogleAppsScript.Spreadsheet.Sheet): { startDate: Date; endDate: Date } => {
@@ -182,7 +182,7 @@ const formatData = (
 };
 
 const writeInSpreadsheet = (
-    formattedDataList: {
+    searchPerformances: {
         withAnchor: SearchPerformanceGroupedByQueryAndPage;
         matchedWithoutAnchor: SearchPerformanceGroupedByQueryAndPage;
         notMatchedWithoutAnchor: SearchPerformanceGroupedByQueryAndPage;
@@ -191,7 +191,7 @@ const writeInSpreadsheet = (
 ) => {
     const header = [["キーワード", "記事URL", "タイプ", "クリック数", "インプレッション", "平均順位", "平均CTR"]];
 
-    const results = formattedDataList.flatMap((data) => {
+    const results = searchPerformances.flatMap((data) => {
         const resultWithAnchor = data.withAnchor.map((row) => [
             row["query"],
             row["page"],
