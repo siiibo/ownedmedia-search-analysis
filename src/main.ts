@@ -197,7 +197,7 @@ const writeInSpreadsheet = (
     }[],
     resultSheet: GoogleAppsScript.Spreadsheet.Sheet
 ) => {
-    const header = [["キーワード", "記事URL", "タイプ", "クリック数", "インプレッション", "平均順位", "平均CTR"]];
+    const header = ["キーワード", "記事URL", "タイプ", "クリック数", "インプレッション", "平均順位", "平均CTR"];
 
     const contents = responsesGroupedByPageAttribute.flatMap((data) => {
         const resultWithAnchor = data.withAnchor.map((row) => [
@@ -234,7 +234,7 @@ const writeInSpreadsheet = (
     });
 
     if (contents.length >= 1) {
-        resultSheet.getRange(1, 1, contents.length + 1, header[0].length).setValues([...header, ...contents]);
+        resultSheet.getRange(1, 1, contents.length + 1, header.length).setValues([...[header], ...contents]);
         resultSheet.getRange(2, 7, contents.length, 1).setNumberFormat("0.00%");
     }
 };
