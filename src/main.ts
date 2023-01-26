@@ -35,7 +35,7 @@ type SearchPerformanceGroupedByQueryAndPage = {
     position: number;
     query: string;
     page: string;
-}[];
+};
 
 export const init = () => {
     const spreadsheet = getSpreadsheet();
@@ -180,9 +180,9 @@ const getResponseGroupedByPageAttribute = (
     response: SearchConsoleResponse2,
     urls: string[]
 ): {
-    withAnchor: SearchPerformanceGroupedByQueryAndPage;
-    matchedWithoutAnchor: SearchPerformanceGroupedByQueryAndPage;
-    notMatchedWithoutAnchor: SearchPerformanceGroupedByQueryAndPage;
+    withAnchor: SearchPerformanceGroupedByQueryAndPage[];
+    matchedWithoutAnchor: SearchPerformanceGroupedByQueryAndPage[];
+    notMatchedWithoutAnchor: SearchPerformanceGroupedByQueryAndPage[];
 } => {
     const searchPerformanceGroupedByQueryAndPage = response["rows"].map(({ keys, ...rest }) => {
         return {
@@ -208,9 +208,9 @@ const getResponseGroupedByPageAttribute = (
 
 const writeInSpreadsheet = (
     responsesGroupedByPageAttribute: {
-        withAnchor: SearchPerformanceGroupedByQueryAndPage;
-        matchedWithoutAnchor: SearchPerformanceGroupedByQueryAndPage;
-        notMatchedWithoutAnchor: SearchPerformanceGroupedByQueryAndPage;
+        withAnchor: SearchPerformanceGroupedByQueryAndPage[];
+        matchedWithoutAnchor: SearchPerformanceGroupedByQueryAndPage[];
+        notMatchedWithoutAnchor: SearchPerformanceGroupedByQueryAndPage[];
     }[],
     resultSheet: GoogleAppsScript.Spreadsheet.Sheet
 ) => {
