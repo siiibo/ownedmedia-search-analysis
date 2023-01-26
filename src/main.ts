@@ -8,15 +8,13 @@ type KeywordUrl = {
 
 type SearchConsoleResponse = {
     responseAggregationType: string;
-    rows:
-        | {
-              clicks: number;
-              ctr: number;
-              impressions: number;
-              keys: string[];
-              position: number;
-          }[]
-        | undefined;
+    rows?: {
+        clicks: number;
+        ctr: number;
+        impressions: number;
+        keys: string[];
+        position: number;
+    }[];
 };
 
 type SearchPerformanceGroupedByQueryAndPage = {
