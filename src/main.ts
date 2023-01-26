@@ -17,17 +17,6 @@ type SearchConsoleResponse = {
     }[];
 };
 
-type SearchConsoleResponse2 = {
-    responseAggregationType: string;
-    rows: {
-        clicks: number;
-        ctr: number;
-        impressions: number;
-        keys: string[];
-        position: number;
-    }[];
-};
-
 type SearchPerformanceGroupedByQueryAndPage = {
     clicks: number;
     ctr: number;
@@ -79,24 +68,10 @@ export const main = () => {
         (kv): kv is [string, KeywordUrl[]] => kv[1] != undefined
     );
 
-    const searchConsoleResponses = keywordUrlEntries
-        .map(([keyword, keywordUrls]) => {
-            const response = getDataFromSearchConsole(keyword, startDate, endDate);
-            return { response, keyword, keywordUrls };
-        })
-        .filter(
-            (
-                searchConsoleResponse
-            ): searchConsoleResponse is {
-                response: SearchConsoleResponse2;
-                keyword: string;
-                keywordUrls: KeywordUrl[];
-            } =>
-                !(
-                    typeof searchConsoleResponse.response["rows"] === "undefined" ||
-                    searchConsoleResponse.response["rows"].length === 0
-                )
-        );
+    const searchConsoleResponses = keywordUrlEntries.map(([keyword, keywordUrls]) => {
+        const response = getDataFromSearchConsole(keyword, startDate, endDate);
+        return { response, keyword, keywordUrls };
+    });
 
     const responsesGroupedByPageAttribute = searchConsoleResponses.map(({ response, keywordUrls }) => {
         const urls = keywordUrls.map((keywordUrl) => {
@@ -177,13 +152,16 @@ const getDataFromSearchConsole = (keyword: string, startDate: Date, endDate: Dat
 };
 
 const getResponseGroupedByPageAttribute = (
-    response: SearchConsoleResponse2,
+    response: SearchConsoleResponse,
     urls: string[]
 ): {
-    withAnchor: SearchPerformanceGroupedByQueryAndPage[];
-    matchedWithoutAnchor: SearchPerformanceGroupedByQueryAndPage[];
-    notMatchedWithoutAnchor: SearchPerformanceGroupedByQueryAndPage[];
+    withAnchor?: SearchPerformanceGroupedByQueryAndPage[];
+    matchedWithoutAnchor?: SearchPerformanceGroupedByQueryAndPage[];
+    notMatchedWithoutAnchor?: SearchPerformanceGroupedByQueryAndPage[];
 } => {
+    if (response["rows"] === undefined || response["rows"].length === 0) {
+        return {};
+    }
     const searchPerformanceGroupedByQueryAndPage = response["rows"].map(({ keys, ...rest }) => {
         return {
             query: keys[0],
@@ -208,15 +186,21 @@ const getResponseGroupedByPageAttribute = (
 
 const writeInSpreadsheet = (
     responsesGroupedByPageAttribute: {
-        withAnchor: SearchPerformanceGroupedByQueryAndPage[];
-        matchedWithoutAnchor: SearchPerformanceGroupedByQueryAndPage[];
-        notMatchedWithoutAnchor: SearchPerformanceGroupedByQueryAndPage[];
+        withAnchor?: SearchPerformanceGroupedByQueryAndPage[];
+        matchedWithoutAnchor?: SearchPerformanceGroupedByQueryAndPage[];
+        notMatchedWithoutAnchor?: SearchPerformanceGroupedByQueryAndPage[];
     }[],
     resultSheet: GoogleAppsScript.Spreadsheet.Sheet
 ) => {
     const header = ["キーワード", "記事URL", "タイプ", "クリック数", "インプレッション", "平均順位", "平均CTR"];
 
     const contents = responsesGroupedByPageAttribute.flatMap((data) => {
+        if (
+            data.withAnchor === undefined ||
+            data.matchedWithoutAnchor === undefined ||
+            data.notMatchedWithoutAnchor === undefined
+        )
+            return;
         const resultWithAnchor = data.withAnchor.map((row) => [
             row["query"],
             row["page"],
@@ -250,8 +234,13 @@ const writeInSpreadsheet = (
         return [...resultMatchedWithoutAnchor, ...resultNotMatchedWithoutAnchor, ...resultWithAnchor];
     });
 
+    const contentsExcludedUndefined = contents.filter(
+        (content): content is (string | number)[] => content !== undefined
+    );
     if (contents.length >= 1) {
-        resultSheet.getRange(1, 1, contents.length + 1, header.length).setValues([header, ...contents]);
+        resultSheet
+            .getRange(1, 1, contents.length + 1, header.length)
+            .setValues([header, ...contentsExcludedUndefined]);
         resultSheet.getRange(2, 7, contents.length, 1).setNumberFormat("0.00%");
     }
 };
