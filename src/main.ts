@@ -17,6 +17,17 @@ type SearchConsoleResponse = {
     }[];
 };
 
+type SearchConsoleResponse2 = {
+    responseAggregationType: string;
+    rows: {
+        clicks: number;
+        ctr: number;
+        impressions: number;
+        keys: string[];
+        position: number;
+    }[];
+};
+
 type SearchPerformanceGroupedByQueryAndPage = {
     clicks: number;
     ctr: number;
@@ -74,7 +85,13 @@ export const main = () => {
             return { response, keyword, keywordUrls };
         })
         .filter(
-            (searchConsoleResponse) =>
+            (
+                searchConsoleResponse
+            ): searchConsoleResponse is {
+                response: SearchConsoleResponse2;
+                keyword: string;
+                keywordUrls: KeywordUrl[];
+            } =>
                 !(
                     typeof searchConsoleResponse.response["rows"] === "undefined" ||
                     searchConsoleResponse.response["rows"].length === 0
@@ -160,7 +177,7 @@ const getDataFromSearchConsole = (keyword: string, startDate: Date, endDate: Dat
 };
 
 const getResponseGroupedByPageAttribute = (
-    response: SearchConsoleResponse,
+    response: SearchConsoleResponse2,
     urls: string[]
 ): {
     withAnchor: SearchPerformanceGroupedByQueryAndPage;
