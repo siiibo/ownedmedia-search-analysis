@@ -162,7 +162,7 @@ const getResponseGroupedByPageAttribute = (
     if (response["rows"] === undefined || response["rows"].length === 0) {
         return {};
     }
-    const searchPerformanceGroupedByQueryAndPage = response["rows"].map(({ keys, ...rest }) => {
+    const searchPerformances: SearchPerformanceGroupedByQueryAndPage[] = response["rows"].map(({ keys, ...rest }) => {
         return {
             query: keys[0],
             page: keys[1],
@@ -174,10 +174,8 @@ const getResponseGroupedByPageAttribute = (
      *
      * 参考: https://github.com/siiibo/ownedmedia-search-analysis/pull/4#discussion_r1080962946
      */
-    const withAnchor = searchPerformanceGroupedByQueryAndPage.filter(
-        (row) => row["page"].includes("#") && row["clicks"] >= 1
-    );
-    const withoutAnchor = searchPerformanceGroupedByQueryAndPage.filter((row) => !row["page"].includes("#"));
+    const withAnchor = searchPerformances.filter((row) => row["page"].includes("#") && row["clicks"] >= 1);
+    const withoutAnchor = searchPerformances.filter((row) => !row["page"].includes("#"));
     const matchedWithoutAnchor = withoutAnchor.filter((row) => urls.includes(row["page"]));
     const notMatchedWithoutAnchor = withoutAnchor.filter((row) => !urls.includes(row["page"]) && row["clicks"] >= 1);
 
