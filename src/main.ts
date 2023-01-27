@@ -8,13 +8,22 @@ type KeywordUrl = {
 
 type SearchConsoleResponse = {
     responseAggregationType: string;
-    rows: {
+    rows?: {
         clicks: number;
         ctr: number;
         impressions: number;
         keys: string[];
         position: number;
     }[];
+};
+
+type SearchPerformanceGroupedByQueryAndPage = {
+    clicks: number;
+    ctr: number;
+    impressions: number;
+    position: number;
+    query: string;
+    page: string;
 };
 
 export const init = () => {
@@ -45,61 +54,39 @@ export const main = () => {
     if (!periodSheet) throw new Error("periodSheet is not defined");
     const { startDate, endDate } = getStartEndDate(periodSheet);
 
-    const keywordUrlSheet = spreadsheet.getSheetByName("対キーワードURL週次検索結果");
+    const keywordUrlSheet = spreadsheet.getSheetByName("キーワードURL指定");
     if (!keywordUrlSheet) throw new Error("SHEET is not defined");
 
     const keywordUrl = getUrlsGroupedByKeyword(keywordUrlSheet);
 
-    const keywordResultSheet = spreadsheet.insertSheet(3);
-    const keywordUrlResultSheet = spreadsheet.insertSheet(4);
+    const resultSheet = spreadsheet.insertSheet(
+        `${format(startDate, "yyyy-MM-dd")}~${format(endDate, "MM-dd")}-掲載順位結果`,
+        3
+    );
 
-    setHeader(keywordResultSheet, keywordUrlResultSheet);
+    const keywordUrlEntries = Object.entries(keywordUrl).filter(
+        (kv): kv is [string, KeywordUrl[]] => kv[1] != undefined
+    );
 
-    for (const [keyword, values] of Object.entries(keywordUrl)) {
-        if (values == undefined) {
-            continue;
-        }
-        const urls = values.map((value) => {
-            return value.url;
+    const searchConsoleResponses = keywordUrlEntries.map(([keyword, keywordUrls]) => {
+        const response = getDataFromSearchConsole(keyword, startDate, endDate);
+        return { response, keyword, keywordUrls };
+    });
+
+    const responsesGroupedByPageAttribute = searchConsoleResponses.map(({ response, keywordUrls }) => {
+        const urls = keywordUrls.map((keywordUrl) => {
+            return keywordUrl.url;
         });
-        const responseData = getDataFromSearchConsole(keyword, startDate, endDate);
+        return getResponseGroupedByPageAttribute(response, urls);
+    });
 
-        if (!(typeof responseData["rows"] === "undefined" || responseData["rows"].length === 0)) {
-            if (keywordUrl[keyword] != undefined) {
-                const results = formatData(responseData, urls);
-                const urlMatched = results.matched;
-                const urlNotMatched = results.notMatched;
-                const urlBranched = results.branched;
-
-                writeInSpreadsheet(urlMatched, urlNotMatched, urlBranched, keywordUrlResultSheet, keywordResultSheet);
-            }
-        } else {
-            console.log("該当するデータがありませんでした。");
-        }
-    }
-    keywordResultSheet.setName(
-        format(startDate, "yyyy-MM-dd") + "~" + format(endDate, "MM-dd") + "-" + "対キーワード週次検索結果"
-    );
-    keywordUrlResultSheet.setName(
-        format(startDate, "yyyy-MM-dd") + "~" + format(endDate, "MM-dd") + "-" + "対キーワードURL週次検索結果"
-    );
+    writeInSpreadsheet(responsesGroupedByPageAttribute, resultSheet);
 };
+
 const getStartEndDate = (periodSheet: GoogleAppsScript.Spreadsheet.Sheet): { startDate: Date; endDate: Date } => {
     const startDate = periodSheet.getRange("B4").getValue();
     const endDate = endOfDay(periodSheet.getRange("C4").getValue());
     return { startDate, endDate };
-};
-
-const setHeader = (
-    keywordResultSheet: GoogleAppsScript.Spreadsheet.Sheet,
-    keywordUrlResultSheet: GoogleAppsScript.Spreadsheet.Sheet
-) => {
-    const header = [["キーワード", "記事URL", "クリック数", "インプレッション", "平均順位", "平均CTR"]];
-    keywordResultSheet.getRange(1, 1, 1, 1).setValues([["意図していない表示URL"]]);
-    keywordResultSheet.getRange(2, 1, 1, header[0].length).setValues(header);
-    keywordResultSheet.getRange(1, 1 + header[0].length + 1, 1, 1).setValues([["枝付きURL"]]);
-    keywordResultSheet.getRange(2, 1 + header[0].length + 1, 1, header[0].length).setValues(header);
-    keywordUrlResultSheet.getRange(1, 1, 1, header[0].length).setValues(header);
 };
 
 function getUrlsGroupedByKeyword(keywordUrlSheet: GoogleAppsScript.Spreadsheet.Sheet) {
@@ -159,89 +146,86 @@ const getDataFromSearchConsole = (keyword: string, startDate: Date, endDate: Dat
         contentType: "application/json",
     };
 
-    const response = UrlFetchApp.fetch(apiUrl, options);
-    const responseData: SearchConsoleResponse = JSON.parse(response.getContentText());
-    return responseData;
+    const httpResponse = UrlFetchApp.fetch(apiUrl, options);
+    const response: SearchConsoleResponse = JSON.parse(httpResponse.getContentText());
+    return response;
 };
 
-const formatData = (
-    responseData: SearchConsoleResponse,
-    urls: string[] | undefined
-): { matched: (string | number)[][]; notMatched: (string | number)[][]; branched: (string | number)[][] } => {
-    const urlMatched = [];
-    const urlNotMatched = [];
-    const urlBranched = [];
+const getResponseGroupedByPageAttribute = (
+    response: SearchConsoleResponse,
+    urls: string[]
+): {
+    withAnchor: SearchPerformanceGroupedByQueryAndPage[];
+    matchedWithoutAnchor: SearchPerformanceGroupedByQueryAndPage[];
+    notMatchedWithoutAnchor: SearchPerformanceGroupedByQueryAndPage[];
+} => {
+    if (!response["rows"]) return { withAnchor: [], matchedWithoutAnchor: [], notMatchedWithoutAnchor: [] };
+    const searchPerformances: SearchPerformanceGroupedByQueryAndPage[] = response["rows"].map(({ keys, ...rest }) => {
+        return {
+            query: keys[0],
+            page: keys[1],
+            ...rest,
+        };
+    });
+    /**
+     * アンカー付き, 不一致はさらに「クリック数1以上のみ」で絞り込みを行う. 完全一致は行わない.
+     *
+     * 参考: https://github.com/siiibo/ownedmedia-search-analysis/pull/4#discussion_r1080962946
+     */
+    const withAnchor = searchPerformances.filter((row) => row["page"].includes("#") && row["clicks"] >= 1);
+    const withoutAnchor = searchPerformances.filter((row) => !row["page"].includes("#"));
+    const matchedWithoutAnchor = withoutAnchor.filter((row) => urls.includes(row["page"]));
+    const notMatchedWithoutAnchor = withoutAnchor.filter((row) => !urls.includes(row["page"]) && row["clicks"] >= 1);
 
-    for (let i = 0; i < responseData["rows"].length; i++) {
-        // URLが対策URLと一致するなら
-        if (urls?.includes(responseData["rows"][i]["keys"][1])) {
-            urlMatched.push([
-                responseData["rows"][i]["keys"][0],
-                responseData["rows"][i]["keys"][1],
-                responseData["rows"][i]["clicks"],
-                responseData["rows"][i]["impressions"],
-                responseData["rows"][i]["position"],
-                responseData["rows"][i]["ctr"],
-            ]);
-        }
-        // 対策URLと一致しないかつ枝付きじゃないかつクリック数が1以上
-        else if (!responseData["rows"][i]["keys"][1].match("#") && responseData["rows"][i]["clicks"] >= 1) {
-            urlNotMatched.push([
-                responseData["rows"][i]["keys"][0],
-                responseData["rows"][i]["keys"][1],
-                responseData["rows"][i]["clicks"],
-                responseData["rows"][i]["impressions"],
-                responseData["rows"][i]["position"],
-                responseData["rows"][i]["ctr"],
-            ]);
-        }
-        // URLが枝付きかつクリックが1以上なら
-        else if (responseData["rows"][i]["clicks"] >= 1) {
-            urlBranched.push([
-                responseData["rows"][i]["keys"][0],
-                responseData["rows"][i]["keys"][1],
-                responseData["rows"][i]["clicks"],
-                responseData["rows"][i]["impressions"],
-                responseData["rows"][i]["position"],
-                responseData["rows"][i]["ctr"],
-            ]);
-        }
-    }
-    return { matched: urlMatched, notMatched: urlNotMatched, branched: urlBranched };
+    return { withAnchor, matchedWithoutAnchor, notMatchedWithoutAnchor };
 };
 
 const writeInSpreadsheet = (
-    urlMatched: (string | number)[][],
-    urlNotMatched: (string | number)[][],
-    urlBranched: (string | number)[][],
-    keywordUrlResultSheet: GoogleAppsScript.Spreadsheet.Sheet,
-    keywordResultSheet: GoogleAppsScript.Spreadsheet.Sheet
+    responsesGroupedByPageAttribute: {
+        withAnchor: SearchPerformanceGroupedByQueryAndPage[];
+        matchedWithoutAnchor: SearchPerformanceGroupedByQueryAndPage[];
+        notMatchedWithoutAnchor: SearchPerformanceGroupedByQueryAndPage[];
+    }[],
+    resultSheet: GoogleAppsScript.Spreadsheet.Sheet
 ) => {
-    if (urlMatched.length >= 1) {
-        const urlMatchedColumnBVals = keywordUrlResultSheet.getRange("A:A").getValues();
-        const urlMatchedLastRow = urlMatchedColumnBVals.filter(String).length;
-        keywordUrlResultSheet
-            .getRange(urlMatchedLastRow + 1, 1, urlMatched.length, urlMatched[0].length)
-            .setValues(urlMatched);
-        keywordUrlResultSheet.getRange(urlMatchedLastRow + 1, 6, urlMatched.length).setNumberFormat("0.00%");
-    }
-    console.log(urlNotMatched);
-    if (urlNotMatched.length >= 1) {
-        const urlNotMatchedColumnBVals = keywordResultSheet.getRange("A:A").getValues();
-        const urlNotMatchedLastRow = urlNotMatchedColumnBVals.filter(String).length;
-        keywordResultSheet
-            .getRange(urlNotMatchedLastRow + 1, 1, urlNotMatched.length, urlNotMatched[0].length)
-            .setValues(urlNotMatched);
-        keywordResultSheet.getRange(urlNotMatchedLastRow + 1, 6, urlNotMatched.length).setNumberFormat("0.00%");
-    }
+    const header = ["キーワード", "記事URL", "タイプ", "クリック数", "インプレッション", "平均順位", "平均CTR"];
 
-    if (urlBranched.length >= 1) {
-        console.log("branched", urlBranched);
-        const urlBranchedColumnBVals = keywordResultSheet.getRange("H:H").getValues();
-        const urlBranchedLastRow = urlBranchedColumnBVals.filter(String).length;
-        keywordResultSheet
-            .getRange(urlBranchedLastRow + 1, 8, urlBranched.length, urlBranched[0].length)
-            .setValues(urlBranched);
-        keywordResultSheet.getRange(urlBranchedLastRow + 1, 13, urlBranched.length).setNumberFormat("0.00%");
+    const contents = responsesGroupedByPageAttribute.flatMap((data) => {
+        const resultWithAnchor = data.withAnchor.map((row) => [
+            row["query"],
+            row["page"],
+            "アンカー付き",
+            row["clicks"],
+            row["impressions"],
+            row["position"],
+            row["ctr"],
+        ]);
+
+        const resultMatchedWithoutAnchor = data.matchedWithoutAnchor.map((row) => [
+            row["query"],
+            row["page"],
+            "完全一致",
+            row["clicks"],
+            row["impressions"],
+            row["position"],
+            row["ctr"],
+        ]);
+
+        const resultNotMatchedWithoutAnchor = data.notMatchedWithoutAnchor.map((row) => [
+            row["query"],
+            row["page"],
+            "不一致",
+            row["clicks"],
+            row["impressions"],
+            row["position"],
+            row["ctr"],
+        ]);
+
+        return [...resultMatchedWithoutAnchor, ...resultNotMatchedWithoutAnchor, ...resultWithAnchor];
+    });
+
+    if (contents.length >= 1) {
+        resultSheet.getRange(1, 1, contents.length + 1, header.length).setValues([header, ...contents]);
+        resultSheet.getRange(2, 7, contents.length, 1).setNumberFormat("0.00%");
     }
 };
