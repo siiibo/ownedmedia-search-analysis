@@ -155,13 +155,11 @@ const getResponseGroupedByPageAttribute = (
     response: SearchConsoleResponse,
     urls: string[]
 ): {
-    withAnchor?: SearchPerformanceGroupedByQueryAndPage[];
-    matchedWithoutAnchor?: SearchPerformanceGroupedByQueryAndPage[];
-    notMatchedWithoutAnchor?: SearchPerformanceGroupedByQueryAndPage[];
+    withAnchor: SearchPerformanceGroupedByQueryAndPage[];
+    matchedWithoutAnchor: SearchPerformanceGroupedByQueryAndPage[];
+    notMatchedWithoutAnchor: SearchPerformanceGroupedByQueryAndPage[];
 } => {
-    if (response["rows"] === undefined || response["rows"].length === 0) {
-        return {};
-    }
+    if (!response["rows"]) return { withAnchor: [], matchedWithoutAnchor: [], notMatchedWithoutAnchor: [] };
     const searchPerformances: SearchPerformanceGroupedByQueryAndPage[] = response["rows"].map(({ keys, ...rest }) => {
         return {
             query: keys[0],
@@ -184,21 +182,15 @@ const getResponseGroupedByPageAttribute = (
 
 const writeInSpreadsheet = (
     responsesGroupedByPageAttribute: {
-        withAnchor?: SearchPerformanceGroupedByQueryAndPage[];
-        matchedWithoutAnchor?: SearchPerformanceGroupedByQueryAndPage[];
-        notMatchedWithoutAnchor?: SearchPerformanceGroupedByQueryAndPage[];
+        withAnchor: SearchPerformanceGroupedByQueryAndPage[];
+        matchedWithoutAnchor: SearchPerformanceGroupedByQueryAndPage[];
+        notMatchedWithoutAnchor: SearchPerformanceGroupedByQueryAndPage[];
     }[],
     resultSheet: GoogleAppsScript.Spreadsheet.Sheet
 ) => {
     const header = ["キーワード", "記事URL", "タイプ", "クリック数", "インプレッション", "平均順位", "平均CTR"];
 
     const contents = responsesGroupedByPageAttribute.flatMap((data) => {
-        if (
-            data.withAnchor === undefined ||
-            data.matchedWithoutAnchor === undefined ||
-            data.notMatchedWithoutAnchor === undefined
-        )
-            return;
         const resultWithAnchor = data.withAnchor.map((row) => [
             row["query"],
             row["page"],
@@ -232,13 +224,8 @@ const writeInSpreadsheet = (
         return [...resultMatchedWithoutAnchor, ...resultNotMatchedWithoutAnchor, ...resultWithAnchor];
     });
 
-    const contentsExcludedUndefined = contents.filter(
-        (content): content is (string | number)[] => content !== undefined
-    );
     if (contents.length >= 1) {
-        resultSheet
-            .getRange(1, 1, contents.length + 1, header.length)
-            .setValues([header, ...contentsExcludedUndefined]);
+        resultSheet.getRange(1, 1, contents.length + 1, header.length).setValues([header, ...contents]);
         resultSheet.getRange(2, 7, contents.length, 1).setNumberFormat("0.00%");
     }
 };
