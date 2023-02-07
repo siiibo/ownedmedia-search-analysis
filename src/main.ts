@@ -56,16 +56,14 @@ export const main = () => {
     const keywordUrlSheet = spreadsheet.getSheetByName("キーワードURL指定");
     if (!keywordUrlSheet) throw new Error("SHEET is not defined");
 
-    const keywordUrlEntries = getKeywordUrls(keywordUrlSheet);
+    const keywordUrls = getKeywordUrls(keywordUrlSheet);
 
     const resultSheet = spreadsheet.insertSheet(
         `${format(startDate, "yyyy-MM-dd")}~${format(endDate, "MM-dd")}-掲載順位結果`,
         3
     );
 
-    // const keywordUrlEntries = Object.entries(keywordUrl).filter((kv): kv is [string, string] => kv[1] != undefined);
-
-    const searchConsoleResponses = keywordUrlEntries.map((keywordUrl) => {
+    const searchConsoleResponses = keywordUrls.map((keywordUrl) => {
         const response = getDataFromSearchConsole(keywordUrl.keyword, startDate, endDate);
         return { response, keywordUrl };
     });
