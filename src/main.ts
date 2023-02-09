@@ -69,8 +69,7 @@ export const main = () => {
     });
 
     const responsesGroupedByPageAttribute = searchConsoleResponses.map(({ response, keywordUrl }) => {
-        const url = keywordUrl.url;
-        return getResponseGroupedByPageAttribute(response, url);
+        return getResponseGroupedByPageAttribute(response, keywordUrl);
     });
 
     writeInSpreadsheet(responsesGroupedByPageAttribute, resultSheet);
@@ -145,13 +144,26 @@ const getDataFromSearchConsole = (keyword: string, startDate: Date, endDate: Dat
 
 const getResponseGroupedByPageAttribute = (
     response: SearchConsoleResponse,
-    url: string
+    keywordUrl: KeywordUrl
 ): {
     withAnchor: SearchPerformanceGroupedByQueryAndPage[];
     matchedWithoutAnchor: SearchPerformanceGroupedByQueryAndPage[];
     notMatchedWithoutAnchor: SearchPerformanceGroupedByQueryAndPage[];
+    noResult: SearchPerformanceGroupedByQueryAndPage[];
 } => {
-    if (!response["rows"]) return { withAnchor: [], matchedWithoutAnchor: [], notMatchedWithoutAnchor: [] };
+    if (!response["rows"]) {
+        const noResult = [
+            {
+                clicks: 0,
+                ctr: 0,
+                impressions: 0,
+                position: 0,
+                query: keywordUrl.keyword,
+                page: keywordUrl.url,
+            },
+        ];
+        return { withAnchor: [], matchedWithoutAnchor: [], notMatchedWithoutAnchor: [], noResult };
+    }
     const searchPerformances: SearchPerformanceGroupedByQueryAndPage[] = response["rows"].map(({ keys, ...rest }) => {
         return {
             query: keys[0],
@@ -166,10 +178,12 @@ const getResponseGroupedByPageAttribute = (
      */
     const withAnchor = searchPerformances.filter((row) => row["page"].includes("#") && row["clicks"] >= 1);
     const withoutAnchor = searchPerformances.filter((row) => !row["page"].includes("#"));
-    const matchedWithoutAnchor = withoutAnchor.filter((row) => url === row["page"]);
-    const notMatchedWithoutAnchor = withoutAnchor.filter((row) => !(url === row["page"]) && row["clicks"] >= 1);
+    const matchedWithoutAnchor = withoutAnchor.filter((row) => keywordUrl.url === row["page"]);
+    const notMatchedWithoutAnchor = withoutAnchor.filter(
+        (row) => !(keywordUrl.url === row["page"]) && row["clicks"] >= 1
+    );
 
-    return { withAnchor, matchedWithoutAnchor, notMatchedWithoutAnchor };
+    return { withAnchor, matchedWithoutAnchor, notMatchedWithoutAnchor, noResult: [] };
 };
 
 const writeInSpreadsheet = (
@@ -177,6 +191,7 @@ const writeInSpreadsheet = (
         withAnchor: SearchPerformanceGroupedByQueryAndPage[];
         matchedWithoutAnchor: SearchPerformanceGroupedByQueryAndPage[];
         notMatchedWithoutAnchor: SearchPerformanceGroupedByQueryAndPage[];
+        noResult: SearchPerformanceGroupedByQueryAndPage[];
     }[],
     resultSheet: GoogleAppsScript.Spreadsheet.Sheet
 ) => {
@@ -213,7 +228,22 @@ const writeInSpreadsheet = (
             row["ctr"],
         ]);
 
-        return [...resultMatchedWithoutAnchor, ...resultNotMatchedWithoutAnchor, ...resultWithAnchor];
+        const resultOfNoResult = data.noResult.map((row) => [
+            row["query"],
+            row["page"],
+            "結果なし",
+            row["clicks"],
+            row["impressions"],
+            row["position"],
+            row["ctr"],
+        ]);
+
+        return [
+            ...resultMatchedWithoutAnchor,
+            ...resultNotMatchedWithoutAnchor,
+            ...resultWithAnchor,
+            ...resultOfNoResult,
+        ];
     });
 
     if (contents.length >= 1) {
