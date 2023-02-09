@@ -1,6 +1,6 @@
 import { endOfDay, format } from "date-fns";
 
-type KeywordUrl = {
+type UserSpecifiedKeywordUrl = {
     keyword: string;
     url: string;
 };
@@ -83,7 +83,7 @@ const getStartEndDate = (periodSheet: GoogleAppsScript.Spreadsheet.Sheet): { sta
 
 function getKeywordUrls(keywordUrlSheet: GoogleAppsScript.Spreadsheet.Sheet) {
     const [_sheetHeader, ...sheetValues] = keywordUrlSheet.getDataRange().getValues();
-    const keywordUrls: KeywordUrl[] = sheetValues.map((row) => {
+    const keywordUrls: UserSpecifiedKeywordUrl[] = sheetValues.map((row) => {
         return {
             keyword: row[0],
             url: row[1],
@@ -144,7 +144,7 @@ const getDataFromSearchConsole = (keyword: string, startDate: Date, endDate: Dat
 
 const getResponseGroupedByPageAttribute = (
     response: SearchConsoleResponse,
-    keywordUrl: KeywordUrl
+    keywordUrl: UserSpecifiedKeywordUrl
 ): {
     withAnchor: SearchPerformanceGroupedByQueryAndPage[];
     matchedWithoutAnchor: SearchPerformanceGroupedByQueryAndPage[];
