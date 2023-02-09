@@ -1,5 +1,4 @@
 import { endOfDay, format } from "date-fns";
-import { group } from "radash";
 
 type KeywordUrl = {
     keyword: string;
@@ -57,27 +56,21 @@ export const main = () => {
     const keywordUrlSheet = spreadsheet.getSheetByName("キーワードURL指定");
     if (!keywordUrlSheet) throw new Error("SHEET is not defined");
 
-    const keywordUrl = getUrlsGroupedByKeyword(keywordUrlSheet);
+    const keywordUrls = getKeywordUrls(keywordUrlSheet);
 
     const resultSheet = spreadsheet.insertSheet(
         `${format(startDate, "yyyy-MM-dd")}~${format(endDate, "MM-dd")}-掲載順位結果`,
         3
     );
 
-    const keywordUrlEntries = Object.entries(keywordUrl).filter(
-        (kv): kv is [string, KeywordUrl[]] => kv[1] != undefined
-    );
-
-    const searchConsoleResponses = keywordUrlEntries.map(([keyword, keywordUrls]) => {
-        const response = getDataFromSearchConsole(keyword, startDate, endDate);
-        return { response, keyword, keywordUrls };
+    const searchConsoleResponses = keywordUrls.map((keywordUrl) => {
+        const response = getDataFromSearchConsole(keywordUrl.keyword, startDate, endDate);
+        return { response, keywordUrl };
     });
 
-    const responsesGroupedByPageAttribute = searchConsoleResponses.map(({ response, keywordUrls }) => {
-        const urls = keywordUrls.map((keywordUrl) => {
-            return keywordUrl.url;
-        });
-        return getResponseGroupedByPageAttribute(response, urls);
+    const responsesGroupedByPageAttribute = searchConsoleResponses.map(({ response, keywordUrl }) => {
+        const url = keywordUrl.url;
+        return getResponseGroupedByPageAttribute(response, url);
     });
 
     writeInSpreadsheet(responsesGroupedByPageAttribute, resultSheet);
@@ -89,7 +82,7 @@ const getStartEndDate = (periodSheet: GoogleAppsScript.Spreadsheet.Sheet): { sta
     return { startDate, endDate };
 };
 
-function getUrlsGroupedByKeyword(keywordUrlSheet: GoogleAppsScript.Spreadsheet.Sheet) {
+function getKeywordUrls(keywordUrlSheet: GoogleAppsScript.Spreadsheet.Sheet) {
     const [_sheetHeader, ...sheetValues] = keywordUrlSheet.getDataRange().getValues();
     const keywordUrls: KeywordUrl[] = sheetValues.map((row) => {
         return {
@@ -97,8 +90,7 @@ function getUrlsGroupedByKeyword(keywordUrlSheet: GoogleAppsScript.Spreadsheet.S
             url: row[1],
         };
     });
-    const urlGroupedByKeyword = group(keywordUrls, (keywordUrl) => keywordUrl.keyword);
-    return urlGroupedByKeyword;
+    return keywordUrls;
 }
 
 /**
@@ -153,7 +145,7 @@ const getDataFromSearchConsole = (keyword: string, startDate: Date, endDate: Dat
 
 const getResponseGroupedByPageAttribute = (
     response: SearchConsoleResponse,
-    urls: string[]
+    url: string
 ): {
     withAnchor: SearchPerformanceGroupedByQueryAndPage[];
     matchedWithoutAnchor: SearchPerformanceGroupedByQueryAndPage[];
@@ -174,8 +166,8 @@ const getResponseGroupedByPageAttribute = (
      */
     const withAnchor = searchPerformances.filter((row) => row["page"].includes("#") && row["clicks"] >= 1);
     const withoutAnchor = searchPerformances.filter((row) => !row["page"].includes("#"));
-    const matchedWithoutAnchor = withoutAnchor.filter((row) => urls.includes(row["page"]));
-    const notMatchedWithoutAnchor = withoutAnchor.filter((row) => !urls.includes(row["page"]) && row["clicks"] >= 1);
+    const matchedWithoutAnchor = withoutAnchor.filter((row) => url === row["page"]);
+    const notMatchedWithoutAnchor = withoutAnchor.filter((row) => !(url === row["page"]) && row["clicks"] >= 1);
 
     return { withAnchor, matchedWithoutAnchor, notMatchedWithoutAnchor };
 };
