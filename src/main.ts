@@ -58,11 +58,6 @@ export const main = () => {
 
     const keywordUrls = getKeywordUrls(keywordUrlSheet);
 
-    const resultSheet = spreadsheet.insertSheet(
-        `${format(startDate, "yyyy-MM-dd")}~${format(endDate, "MM-dd")}-掲載順位結果`,
-        3
-    );
-
     const searchConsoleResponses = keywordUrls.map((keywordUrl) => {
         const response = getDataFromSearchConsole(keywordUrl.keyword, startDate, endDate);
         return { response, keywordUrl };
@@ -71,6 +66,11 @@ export const main = () => {
     const responsesGroupedByPageAttribute = searchConsoleResponses.map(({ response, keywordUrl }) => {
         return getResponseGroupedByPageAttribute(response, keywordUrl);
     });
+
+    const resultSheet = spreadsheet.insertSheet(
+        `${format(startDate, "yyyy-MM-dd")}~${format(endDate, "MM-dd")}-掲載順位結果`,
+        3
+    );
 
     writeInSpreadsheet(responsesGroupedByPageAttribute, resultSheet);
 };
