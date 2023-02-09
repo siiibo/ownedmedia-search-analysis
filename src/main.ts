@@ -149,21 +149,10 @@ const getResponseGroupedByPageAttribute = (
     withAnchor: SearchPerformanceGroupedByQueryAndPage[];
     matchedWithoutAnchor: SearchPerformanceGroupedByQueryAndPage[];
     notMatchedWithoutAnchor: SearchPerformanceGroupedByQueryAndPage[];
-    noResult: SearchPerformanceGroupedByQueryAndPage[];
+    keywordUrl: UserSpecifiedKeywordUrl;
 } => {
-    if (!response["rows"]) {
-        const noResult = [
-            {
-                clicks: 0,
-                ctr: 0,
-                impressions: 0,
-                position: 0,
-                query: keywordUrl.keyword,
-                page: keywordUrl.url,
-            },
-        ];
-        return { withAnchor: [], matchedWithoutAnchor: [], notMatchedWithoutAnchor: [], noResult };
-    }
+    if (!response["rows"]) return { withAnchor: [], matchedWithoutAnchor: [], notMatchedWithoutAnchor: [], keywordUrl };
+
     const searchPerformances: SearchPerformanceGroupedByQueryAndPage[] = response["rows"].map(({ keys, ...rest }) => {
         return {
             query: keys[0],
@@ -183,7 +172,7 @@ const getResponseGroupedByPageAttribute = (
         (row) => !(keywordUrl.url === row["page"]) && row["clicks"] >= 1
     );
 
-    return { withAnchor, matchedWithoutAnchor, notMatchedWithoutAnchor, noResult: [] };
+    return { withAnchor, matchedWithoutAnchor, notMatchedWithoutAnchor, keywordUrl };
 };
 
 const writeInSpreadsheet = (
@@ -191,7 +180,7 @@ const writeInSpreadsheet = (
         withAnchor: SearchPerformanceGroupedByQueryAndPage[];
         matchedWithoutAnchor: SearchPerformanceGroupedByQueryAndPage[];
         notMatchedWithoutAnchor: SearchPerformanceGroupedByQueryAndPage[];
-        noResult: SearchPerformanceGroupedByQueryAndPage[];
+        keywordUrl: UserSpecifiedKeywordUrl;
     }[],
     resultSheet: GoogleAppsScript.Spreadsheet.Sheet
 ) => {
@@ -228,22 +217,15 @@ const writeInSpreadsheet = (
             row["ctr"],
         ]);
 
-        const resultOfNoResult = data.noResult.map((row) => [
-            row["query"],
-            row["page"],
-            "結果なし",
-            row["clicks"],
-            row["impressions"],
-            row["position"],
-            row["ctr"],
-        ]);
-
-        return [
-            ...resultMatchedWithoutAnchor,
-            ...resultNotMatchedWithoutAnchor,
-            ...resultWithAnchor,
-            ...resultOfNoResult,
-        ];
+        if (!data.withAnchor.length && !data.matchedWithoutAnchor.length && !data.notMatchedWithoutAnchor.length) {
+            const resultOfNoResult = [[data.keywordUrl.keyword, data.keywordUrl.url, "結果なし", 0, 0, 0, 0]];
+            return [
+                ...resultMatchedWithoutAnchor,
+                ...resultNotMatchedWithoutAnchor,
+                ...resultWithAnchor,
+                ...resultOfNoResult,
+            ];
+        } else return [...resultMatchedWithoutAnchor, ...resultNotMatchedWithoutAnchor, ...resultWithAnchor];
     });
 
     if (contents.length >= 1) {
