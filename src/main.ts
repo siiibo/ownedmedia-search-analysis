@@ -1,6 +1,6 @@
 import { endOfDay, format } from "date-fns";
 
-type KeywordUrl = {
+type UserSpecifiedKeywordUrl = {
     keyword: string;
     url: string;
 };
@@ -58,20 +58,22 @@ export const main = () => {
 
     const keywordUrls = getKeywordUrls(keywordUrlSheet);
 
-    const resultSheet = spreadsheet.insertSheet(
-        `${format(startDate, "yyyy-MM-dd")}~${format(endDate, "MM-dd")}-掲載順位結果`,
-        3
-    );
-
     const searchConsoleResponses = keywordUrls.map((keywordUrl) => {
         const response = getDataFromSearchConsole(keywordUrl.keyword, startDate, endDate);
         return { response, keywordUrl };
     });
 
     const responsesGroupedByPageAttribute = searchConsoleResponses.map(({ response, keywordUrl }) => {
-        const url = keywordUrl.url;
-        return getResponseGroupedByPageAttribute(response, url);
+        return {
+            keywordUrl,
+            groupedResponse: getResponseGroupedByPageAttribute(response, keywordUrl),
+        };
     });
+
+    const resultSheet = spreadsheet.insertSheet(
+        `${format(startDate, "yyyy-MM-dd")}~${format(endDate, "MM-dd")}-掲載順位結果`,
+        3
+    );
 
     writeInSpreadsheet(responsesGroupedByPageAttribute, resultSheet);
 };
@@ -84,7 +86,7 @@ const getStartEndDate = (periodSheet: GoogleAppsScript.Spreadsheet.Sheet): { sta
 
 function getKeywordUrls(keywordUrlSheet: GoogleAppsScript.Spreadsheet.Sheet) {
     const [_sheetHeader, ...sheetValues] = keywordUrlSheet.getDataRange().getValues();
-    const keywordUrls: KeywordUrl[] = sheetValues.map((row) => {
+    const keywordUrls: UserSpecifiedKeywordUrl[] = sheetValues.map((row) => {
         return {
             keyword: row[0],
             url: row[1],
@@ -145,13 +147,14 @@ const getDataFromSearchConsole = (keyword: string, startDate: Date, endDate: Dat
 
 const getResponseGroupedByPageAttribute = (
     response: SearchConsoleResponse,
-    url: string
+    keywordUrl: UserSpecifiedKeywordUrl
 ): {
     withAnchor: SearchPerformanceGroupedByQueryAndPage[];
     matchedWithoutAnchor: SearchPerformanceGroupedByQueryAndPage[];
     notMatchedWithoutAnchor: SearchPerformanceGroupedByQueryAndPage[];
 } => {
     if (!response["rows"]) return { withAnchor: [], matchedWithoutAnchor: [], notMatchedWithoutAnchor: [] };
+
     const searchPerformances: SearchPerformanceGroupedByQueryAndPage[] = response["rows"].map(({ keys, ...rest }) => {
         return {
             query: keys[0],
@@ -166,24 +169,37 @@ const getResponseGroupedByPageAttribute = (
      */
     const withAnchor = searchPerformances.filter((row) => row["page"].includes("#") && row["clicks"] >= 1);
     const withoutAnchor = searchPerformances.filter((row) => !row["page"].includes("#"));
-    const matchedWithoutAnchor = withoutAnchor.filter((row) => url === row["page"]);
-    const notMatchedWithoutAnchor = withoutAnchor.filter((row) => !(url === row["page"]) && row["clicks"] >= 1);
+    const matchedWithoutAnchor = withoutAnchor.filter((row) => keywordUrl.url === row["page"]);
+    const notMatchedWithoutAnchor = withoutAnchor.filter(
+        (row) => !(keywordUrl.url === row["page"]) && row["clicks"] >= 1
+    );
 
     return { withAnchor, matchedWithoutAnchor, notMatchedWithoutAnchor };
 };
 
 const writeInSpreadsheet = (
     responsesGroupedByPageAttribute: {
-        withAnchor: SearchPerformanceGroupedByQueryAndPage[];
-        matchedWithoutAnchor: SearchPerformanceGroupedByQueryAndPage[];
-        notMatchedWithoutAnchor: SearchPerformanceGroupedByQueryAndPage[];
+        keywordUrl: UserSpecifiedKeywordUrl;
+        groupedResponse: {
+            withAnchor: SearchPerformanceGroupedByQueryAndPage[];
+            matchedWithoutAnchor: SearchPerformanceGroupedByQueryAndPage[];
+            notMatchedWithoutAnchor: SearchPerformanceGroupedByQueryAndPage[];
+        };
     }[],
     resultSheet: GoogleAppsScript.Spreadsheet.Sheet
 ) => {
     const header = ["キーワード", "記事URL", "タイプ", "クリック数", "インプレッション", "平均順位", "平均CTR"];
 
     const contents = responsesGroupedByPageAttribute.flatMap((data) => {
-        const resultWithAnchor = data.withAnchor.map((row) => [
+        const {
+            keywordUrl,
+            groupedResponse: { withAnchor, matchedWithoutAnchor, notMatchedWithoutAnchor },
+        } = data;
+        const hasResponse = withAnchor.length || matchedWithoutAnchor.length || notMatchedWithoutAnchor.length;
+        if (!hasResponse) {
+            return [[keywordUrl.keyword, keywordUrl.url, "結果なし", 0, 0, 0, 0]];
+        }
+        const resultWithAnchor = withAnchor.map((row) => [
             row["query"],
             row["page"],
             "アンカー付き",
@@ -193,7 +209,7 @@ const writeInSpreadsheet = (
             row["ctr"],
         ]);
 
-        const resultMatchedWithoutAnchor = data.matchedWithoutAnchor.map((row) => [
+        const resultMatchedWithoutAnchor = matchedWithoutAnchor.map((row) => [
             row["query"],
             row["page"],
             "完全一致",
@@ -203,7 +219,7 @@ const writeInSpreadsheet = (
             row["ctr"],
         ]);
 
-        const resultNotMatchedWithoutAnchor = data.notMatchedWithoutAnchor.map((row) => [
+        const resultNotMatchedWithoutAnchor = notMatchedWithoutAnchor.map((row) => [
             row["query"],
             row["page"],
             "不一致",
