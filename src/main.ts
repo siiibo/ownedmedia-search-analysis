@@ -195,6 +195,10 @@ const writeInSpreadsheet = (
             keywordUrl,
             groupedResponse: { withAnchor, matchedWithoutAnchor, notMatchedWithoutAnchor },
         } = data;
+        const hasResponse = withAnchor.length || matchedWithoutAnchor.length || notMatchedWithoutAnchor.length;
+        if (!hasResponse) {
+            return [[keywordUrl.keyword, keywordUrl.url, "結果なし", 0, 0, 0, 0]];
+        }
         const resultWithAnchor = withAnchor.map((row) => [
             row["query"],
             row["page"],
@@ -225,10 +229,7 @@ const writeInSpreadsheet = (
             row["ctr"],
         ]);
 
-        if (!withAnchor.length && !matchedWithoutAnchor.length && !notMatchedWithoutAnchor.length) {
-            const resultOfNoResult = [[keywordUrl.keyword, keywordUrl.url, "結果なし", 0, 0, 0, 0]];
-            return [...resultOfNoResult];
-        } else return [...resultMatchedWithoutAnchor, ...resultNotMatchedWithoutAnchor, ...resultWithAnchor];
+        return [...resultMatchedWithoutAnchor, ...resultNotMatchedWithoutAnchor, ...resultWithAnchor];
     });
 
     if (contents.length >= 1) {
