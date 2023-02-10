@@ -227,12 +227,7 @@ const writeInSpreadsheet = (
 
         if (!withAnchor.length && !matchedWithoutAnchor.length && !notMatchedWithoutAnchor.length) {
             const resultOfNoResult = [[keywordUrl.keyword, keywordUrl.url, "結果なし", 0, 0, 0, 0]];
-            return [
-                ...resultMatchedWithoutAnchor,
-                ...resultNotMatchedWithoutAnchor,
-                ...resultWithAnchor,
-                ...resultOfNoResult,
-            ];
+            return [...resultOfNoResult];
         } else return [...resultMatchedWithoutAnchor, ...resultNotMatchedWithoutAnchor, ...resultWithAnchor];
     });
 
