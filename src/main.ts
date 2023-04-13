@@ -96,13 +96,13 @@ function getKeywordUrls(keywordUrlSheet: GoogleAppsScript.Spreadsheet.Sheet) {
 }
 
 /**
- * スペース（全角・半角）を、全角または半角スペースを受け入れる正規表現に変換する.
+ * 全角または半角スペース / スペースなしを全て同一クエリとする正規表現に変換する.
  *
- * キーワードに含まれるスペースの全角・半角の違いにより，検索結果が違いが生じるので，
- * 全角・半角のどちらでも同じ結果を得るため．
+ * キーワードに含まれるスペースの全角・半角の違い / スペースの有無により，検索結果が違いが生じるので，
+ * それら全てにおいて同じ結果を得るため．
  */
 const convertSpaceToZenkakuHankakuSpaceRegExp = (s: string) => {
-    return `${s.replace(/ |　/g, "( |　)")}`;
+    return `${s.replace(/ |　/g, "( |　)?")}`;
 };
 
 const getDataFromSearchConsole = (keyword: string, startDate: Date, endDate: Date): SearchConsoleResponse => {
