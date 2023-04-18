@@ -117,7 +117,7 @@ const getDataFromSearchConsole = (keyword: string, startDate: Date, endDate: Dat
     const payload = {
         startDate: format(startDate, "yyyy-MM-dd"),
         endDate: format(endDate, "yyyy-MM-dd"),
-        dimensions: ["query", "page"],
+        dimensions: ["page"],
         rowLimit: maxRow, //取得するキーワードの最大数
         dimensionFilterGroups: [
             {
@@ -157,8 +157,8 @@ const getResponseGroupedByPageAttribute = (
 
     const searchPerformances: SearchPerformanceGroupedByQueryAndPage[] = response["rows"].map(({ keys, ...rest }) => {
         return {
-            query: keys[0],
-            page: keys[1],
+            query: keywordUrl.keyword,
+            page: keys[0],
             ...rest,
         };
     });
